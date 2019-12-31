@@ -14,19 +14,44 @@
     font-family: cursive;">
     
     <div style="
-    height: 100vh;
-    background-image: linear-gradient(180deg, #8678dc, #48dfe1);">
+      height: 100vh;
+      background-image: linear-gradient(180deg, #8678dc, #48dfe1);">
 
       <h1 style="text-align: center;font-family: cursive;">ZENZO Forge Inventory</h1>
       <p style="text-align: center;font-family: cursive;">Peers: <b id="peerCount">0</b></p>
       <br>
       <span id="items"></span>
 
+      <div style="text-align: center;margin-top: 50px;">
+        <h2>Create a Decentralized ZNZ-Backed Asset</h2>
+        <p>Name: </p><input id="new_item_name" type="text">
+        <p>Value: </p><input id="new_item_value" type="number">
+        <br>
+        <input type="button" value="Craft" onclick="craftItem()">
+      </div>
+
       <!-- FORGE LIBRARY GOES BELOW -->
       <script src="./index.js"></script>
       <!-- FORGE LIBRARY GOES ABOVE -->
 
       <script>
+          function craftItem() {
+            let nName = document.getElementById("new_item_name").value;
+            let nValue = Number(document.getElementById("new_item_value").value);
+
+            craftForgeItem(nName, nValue);
+          }
+
+          function craftForgeItem (name, value) {
+              superagent
+              .post('http://127.0.0.1:80/forge/create')
+              .send({ amount: value, name: name, auth: authToken})
+              .end((err, res) => {
+                console.info(res);
+                refreshInventory();
+              });
+          }
+
           async function getForgeInventory (addr) {
               let items = [];
               let res = await superagent.post('http://127.0.0.1:80/forge/items');
@@ -37,17 +62,23 @@
               return items;
           }
 
-          getForgeInventory(addy).then(items => {
-            let itemHTML = "<br>";
-            for (let i=0; i<items.length; i++) {
-              document.getElementById("items").innerHTML = itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + items[i].name + '<br><b>Value: </b>' + items[i].value + '</div>';
-            }
-            document.getElementById("items").innerHTML = itemHTML;
-          });
+          function refreshInventory() {
+            getForgeInventory(addy).then(items => {
+              let itemHTML = "<br>";
+              for (let i=0; i<items.length; i++) {
+                itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + items[i].name + '<br><b>Value: </b>' + items[i].value + '</div>';
+              }
+              document.getElementById("items").innerHTML = itemHTML;
+            });
+          }
+
 
           setInterval(function() {
             document.getElementById("peerCount").innerHTML = peers.length;
+            refreshInventory();
           }, 1000);
+
+          refreshInventory();
       </script>
     </div>
   </body>
