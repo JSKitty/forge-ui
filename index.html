@@ -2,18 +2,53 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <meta http-equiv="X-Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <title>Hello World!</title>
+    <title>ZENZO Forge</title>
   </head>
-  <body>
-    <h1>Hello World!</h1>
-    We are using Node.js <span id="node-version"></span>,
-    Chromium <span id="chrome-version"></span>,
-    and Electron <span id="electron-version"></span>.
+  <body style="
+    margin: 0;
+    height: 100%;
+    padding: 0;
+    background-color: #8678dc;
+    overflow: hidden;
+    color: white;
+    font-family: cursive;">
+    
+    <div style="
+    height: 100vh;
+    background-image: linear-gradient(180deg, #8678dc, #48dfe1);">
 
-    <!-- You can also require other files to run in this process -->
-    <script src="./renderer.js"></script>
+      <h1 style="text-align: center;font-family: cursive;">ZENZO Forge Inventory</h1>
+      <p style="text-align: center;font-family: cursive;">Peers: <b id="peerCount">0</b></p>
+      <br>
+      <span id="items"></span>
+
+      <!-- FORGE LIBRARY GOES BELOW -->
+      <script src="./index.js"></script>
+      <!-- FORGE LIBRARY GOES ABOVE -->
+
+      <script>
+          async function getForgeInventory (addr) {
+              let items = [];
+              let res = await superagent.post('http://127.0.0.1:80/forge/items');
+              res = JSON.parse(res.text);
+              for (let i=0; i<res.items.length; i++) {
+                if (res.items[i].address === addr) items.push(res.items[i]);
+              }
+              return items;
+          }
+
+          getForgeInventory(addy).then(items => {
+            let itemHTML = "<br>";
+            for (let i=0; i<items.length; i++) {
+              document.getElementById("items").innerHTML = itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + items[i].name + '<br><b>Value: </b>' + items[i].value + '</div>';
+            }
+            document.getElementById("items").innerHTML = itemHTML;
+          });
+
+          setInterval(function() {
+            document.getElementById("peerCount").innerHTML = peers.length;
+          }, 1000);
+      </script>
+    </div>
   </body>
 </html>
