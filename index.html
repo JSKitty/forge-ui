@@ -8,8 +8,9 @@
     margin: 0;
     height: 100%;
     padding: 0;
-    background-color: #8678dc;
-    overflow: hidden;
+    background-color: #48dfe1;
+    overflow-x: hidden;
+    overflow-y: auto;
     color: white;
     font-family: cursive;">
     
@@ -17,7 +18,7 @@
       height: 100vh;
       background-image: linear-gradient(180deg, #8678dc, #48dfe1);">
 
-      <h1 style="text-align: center;font-family: cursive;">ZENZO Forge Inventory</h1>
+      <h1 style="text-align: center;font-family: cursive;margin-top: 0;padding-top: 25px;">ZENZO Forge Inventory</h1>
       <p style="text-align: center;font-family: cursive;">Peers: <b id="peerCount">0</b></p>
       <br>
       <span id="items"></span>
@@ -53,20 +54,26 @@
           }
 
           async function getForgeInventory (addr) {
-              let items = [];
+              let inv = {items: [], pendingItems: []};
               let res = await superagent.post('http://127.0.0.1:80/forge/items');
               res = JSON.parse(res.text);
               for (let i=0; i<res.items.length; i++) {
-                if (res.items[i].address === addr) items.push(res.items[i]);
+                if (res.items[i].address === addr) inv.items.push(res.items[i]);
               }
-              return items;
+              for (let i=0; i<res.pendingItems.length; i++) {
+                if (res.pendingItems[i].address === addr) inv.pendingItems.push(res.pendingItems[i]);
+              }
+              return inv;
           }
 
           function refreshInventory() {
-            getForgeInventory(addy).then(items => {
+            getForgeInventory(addy).then(inv => {
               let itemHTML = "<br>";
-              for (let i=0; i<items.length; i++) {
-                itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + items[i].name + '<br><b>Value: </b>' + items[i].value + '</div>';
+              for (let i=0; i<inv.items.length; i++) {
+                itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + inv.items[i].name + '<br><b>Value: </b>' + inv.items[i].value + '</div>';
+              }
+              for (let i=0; i<inv.pendingItems.length; i++) {
+                itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;opacity: 0.5;">' + "<b>Name:<b/> " + inv.pendingItems[i].name + '<br><b>Value: </b>' + inv.pendingItems[i].value + '</div>';
               }
               document.getElementById("items").innerHTML = itemHTML;
             });
