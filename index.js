@@ -500,6 +500,20 @@ for (let i=0; i<seednodes.length; i++) {
     seednode.connect(true);
 }
 
+/* ------------------ Daemon Operations ------------------ */
+
+async function lockCollateralUTXOs() {
+    console.info("--- (Re)Locking all item collaterals ---")
+    await asyncForEach(items, async (lItem) => {
+        zenzo.call("gettransaction", lItem.tx).then(rawtx => {
+            zenzo.call("lockunspent", false, [{"txid": lItem.tx, "vout": rawtx.details[0].vout}]).then(didLock => {
+                if (didLock) console.info("- Item collateral was successfully locked in ZENZO Coin Control.");
+            }).catch(console.error);
+        }).catch(console.error);
+    });
+    return true;
+}
+
 // Load all relevent data from disk (if it already exists)
 // Item data
 if (!fs.existsSync(appdata + 'data/')) {
@@ -585,6 +599,11 @@ fromDisk("config.json", true).then(config => {
     explorer = config.blockbook;
     zenzo.call("help").then(msg => {
         console.log("Connected to ZENZO-RPC successfully!");
+
+        // Incase the zenzod daemon was restarted, re-lock our collateral UTXOs to prevent accidental spends
+        lockCollateralUTXOs().then(locked => {
+            if (locked) console.info("All collaterals locked successfully!");
+        })
     }).catch(rpcError);
 });
 
