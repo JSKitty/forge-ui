@@ -23,6 +23,9 @@ let items = [];
 // The list of "pending" items, of which require further validations
 let itemsToValidate = [];
 
+// The list of messages that are in the processing queue
+let messageQueue = [];
+
 // The explorer API to use for checking if a UTXO is spent (CENTRALIZED)
 /* This will eventually be replaced by a home-made system that saves a slimmed UTXO tree on-disk to trustlessly validate the on-chain item collateral */
 let explorer = "";
@@ -223,7 +226,7 @@ function cleanItems (itemList) {
 // Get an item object from our list by it's hash
 function getItem(itemArg) {
     for (let i=0; i<items.length; i++) {
-        if (items[i].hash === itemArg) return items[i];
+        if (items[i].hash === itemArg || items[i].tx === itemArg) return items[i];
     }
     return null;
 }
@@ -285,6 +288,18 @@ class Peer {
         }
     }
 
+    send(sentData, name = "Unknown Request") {
+        return superagent
+        .post(this.host + "/message")
+        .send(sentData)
+        .then((res) => {
+            console.info(`Successfully sent message "${name}" to peer "${this.host}"`);
+        })
+        .catch((err) => {
+            console.warn(`Unable to send "${name}" message to peer "${this.host}" --> ${err.message}`);
+        });
+    }
+
     ping() {
         return superagent
             .post(this.host + "/ping")
@@ -339,6 +354,17 @@ class Peer {
     }
 }
 
+class ReceivedMessage {
+    constructor(host, content, res) {
+        this.from = getPeer(host); // The host (Peer class) of the sender
+        this.content = content; // The content of the message (Could be plaintext or JSON)
+        this.res = res; // The raw express response obj
+    }
+
+    reply(sentContent) {
+        this.from.send(sentContent);
+    }
+}
 
 /* Express Endpoints */
 // Ping
@@ -464,11 +490,73 @@ app.post('/forge/create', (req, res) => {
     }).catch(console.error);
 });
 
+// Forge Smelt
+// The endpoint for smelting (destroying) items and converting them back into their native ZNZ value.
+app.post('/forge/smelt', (req, res) => {
+    let ip = cleanIP(req.ip);
+    if (!isAuthed(req)) return console.warn("Forge: A non-authorized Forge was made by '" + ip + "', ignoring.");
+
+    if (req.body.hash.length !== 64) return console.warn("Forge: Invalid item-hash or TX-hash.");
+
+    let smeltingItem = getItem(req.body.hash);
+    if (smeltingItem === null) return res.json({error: "Smelting Item could not be found via it's item hash nor TX hash."});
+
+    console.info("Preparing to smelt " + smeltingItem.name + "...");
+    zenzo.call("gettransaction", smeltingItem.tx).then(rawtx => {
+        zenzo.call("lockunspent", true, [{"txid": smeltingItem.tx, "vout": rawtx.details[0].vout}]).then(didUnlock => {
+            if (didUnlock) console.info("- Item collateral was successfully unlocked in ZENZO Coin Control.");
+
+            console.info("Now go and manually spend your collateral in Coin Control... pls...");
+
+            res.json({message: "Manual input required, Forge is too lazy to automatically smelt"});
+        }).catch(console.error);
+    }).catch(console.error);
+});
+
 // Forge Items
 // The endpoint for getting a list of validated and pending items
 app.post('/forge/items', (req, res) => {
     let obj = {items: items, pendingItems: itemsToValidate};
     res.json(obj);
+});
+
+
+// P2P Messaging System
+// This endpoint is used to transfer standardized messages (data packets) between nodes effectively
+
+// Every 25ms, check for (and process) messages in the queue
+let messageProcessor = setInterval(function() {
+    if (messageQueue.length === 0) return; // No messages to read!
+
+    // We've got mail! Open it up and find out it's intention
+    console.info("Processing message...");
+    if (messageQueue[0].content.header === "test") {
+        console.info(" - Message test worked, yay!");
+        messageQueue[0].res.send("Hi! :3");
+        messageQueue.shift();
+    }
+    
+    // No matching header found, just count the message as "processed"
+    else {
+        console.error(" - Message with header '" + messageQueue.shift().content.header + "' ignored, no matching headers.");
+    }
+}, 25);
+
+// Message Receive
+// The endpoint for receiving messages from other public nodes
+app.post('/message/receive', (req, res) => {
+    try {
+        let msg = req.body;
+        if (!msg.header) throw "Missing header";
+        if (msg.header.length === 0) throw "Empty header";
+
+        // Message looks good, push it to the queue!
+        let recvMsg = new ReceivedMessage("http://" + cleanIP(req.ip), msg, res);
+        messageQueue.push(recvMsg);
+        console.info("Message received from " + cleanIP(req.ip) + " successfully, appended to queue.");
+    } catch (err) {
+        console.error("Message sent by " + cleanIP(req.ip) + " is not JSON, ignoring.");
+    }
 });
 
 app.listen(80);
