@@ -24,7 +24,7 @@ server=1
 
 4. Start ZENZO Forge, wait for a white screen, close ZENZO Forge (File --> Exit)
 
-5. Open `%appdata%/forge/data/` and paste the below file contents into it:
+5. Open `%appdata%/forge/data/config.json` and paste the below file contents into it:
 
 ```
 {
