@@ -1,1 +1,4 @@
 node_modules
+
+# Electron packager builds
+ZENZO Forge-win32-x64
