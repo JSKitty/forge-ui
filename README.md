@@ -40,4 +40,4 @@ server=1
 
 6. Replace the "Z...~" in the "address" field with an address from your ZENZO Core
 
-7. Save file, open ZENZO Forge and start crafting!
+7. Save file, unlock ZENZO Core wallet (if password protected), open ZENZO Forge and start crafting!
