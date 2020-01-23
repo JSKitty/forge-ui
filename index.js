@@ -23,6 +23,9 @@ let items = [];
 // The list of "pending" items, of which require further validations
 let itemsToValidate = [];
 
+// The list of smelted item hashes, this can be checked to ensure that a peer doesn't send us a smelted item, thus accidently accepting it due to being valid
+let itemsSmelted = [];
+
 // The list of messages that are in the processing queue
 let messageQueue = [];
 
@@ -68,6 +71,11 @@ async function asyncForEach(array, callback) {
 // Validates if an item is genuine
 async function isItemValid (nItem, approve = false) {
     try {
+        if (wasItemSmelted(nItem.hash)) {
+            eraseItem(nItem.hash);
+            console.error("Forge: Item '" + nItem.name + "' was previously smelted.");
+            return false;
+        }
         let rawTx = await zenzo.call("getrawtransaction", nItem.tx, 1);
         if (!rawTx || !rawTx.vout || !rawTx.vout[0]) {
             console.warn('Forge: Item "' + nItem.name + '" is not in the blockchain.');
@@ -153,6 +161,14 @@ async function validateItemBatch (res, nItems, reply) {
         if (nItem.value < 0.01) return console.warn("Forge: Received invalid item, value is below minimum.");
         if (nItem.hash.length !== 64) return console.warn("Forge: Received invalid item, hash length is not 64.");
 
+        // Check if the item was previously smelted
+        if (wasItemSmelted(nItem.hash)) {
+            console.error("Rejected item (" + nItem.name + ") from peer, item has been smelted");
+            if (reply) res.send("Invalid item (" + nItem.name + "), marked as smelted.");
+            return false;
+        }
+
+        // Check if the item's contents are genuine
         let valid = await isItemValid(nItem, true);
         if (!valid) {
             return console.error("Forge: Received item is not genuine, ignored.");
@@ -167,11 +183,26 @@ async function validateItemBatch (res, nItems, reply) {
 
 // Approve an item as valid, moving it to the main items DB and removing it from the pending list
 function approveItem(item) {
+    let wasFound = false;
     for (let i=0; i<itemsToValidate.length; i++) {
         if (item.tx === itemsToValidate[i].tx) {
+            wasFound = true;
             items.push(item);
             itemsToValidate.splice(i, 1);
             console.info("An item has been approved!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as a verified item.");
+        }
+    }
+    // If the item isn't already in the validation list and isn't already approved, add it as a new approved item
+    if (!wasFound) {
+        wasFound = false;
+        for (let i=0; i<items.length; i++) {
+            if (item.tx === items[i].tx) {
+                wasFound = true;
+            }
+        }
+        if (!wasFound) {
+            items.push(item);
+            console.info("An item has been added and approved!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as a verified item.");
         }
     }
 }
@@ -185,6 +216,25 @@ function disproveItem(item) {
             console.info("An item has been disproved!\n - Item '" + item.name + "' (" + item.tx + ") has been removed as a verified item and is now pending.");
         }
     }
+}
+
+// Erase an item from all DB lists (minus smelt list)
+function eraseItem(item) {
+    for (let i=0; i<items.length; i++) {
+        if (item === items[i].hash || item === items[i].tx) {
+            items.splice(i, 1);
+        }
+    }
+    for (let i=0; i<itemsToValidate.length; i++) {
+        if (item === itemsToValidate[i].hash || item === itemsToValidate[i].tx) {
+            itemsToValidate.splice(i, 1);
+        }
+    }
+}
+
+// Check if an item hash or TX was smelted
+function wasItemSmelted(item) {
+    return itemsSmelted.includes(item);
 }
 
 // Increments the invalidation score of an item, if this score reaches 25, the item is considered irreversibly invalid, and removed from the DB permanently
@@ -408,8 +458,8 @@ app.post('/forge/receive', (req, res) => {
 app.post('/forge/sync', (req, res) => {
     let ip = cleanIP(req.ip);
 
-    // Check if they have more items than us, if so, ask for them
-    if (Number(req.body) > (items.length + itemsToValidate.length)) {
+    // Check if they have a different amount of items to us, if so, ask for them
+    if (Number(req.body) != (items.length + itemsToValidate.length)) {
         req.peer = getPeer("http://" + ip);
         req.peer.getItems();
     }
@@ -498,17 +548,15 @@ app.post('/forge/smelt', (req, res) => {
 
     if (req.body.hash.length !== 64) return console.warn("Forge: Invalid item-hash or TX-hash.");
 
-    let smeltingItem = getItem(req.body.hash);
+    const smeltingItem = getItem(req.body.hash);
     if (smeltingItem === null) return res.json({error: "Smelting Item could not be found via it's item hash nor TX hash."});
 
     console.info("Preparing to smelt " + smeltingItem.name + "...");
     zenzo.call("gettransaction", smeltingItem.tx).then(rawtx => {
         zenzo.call("lockunspent", true, [{"txid": smeltingItem.tx, "vout": rawtx.details[0].vout}]).then(didUnlock => {
             if (didUnlock) console.info("- Item collateral was successfully unlocked in ZENZO Coin Control.");
-
-            console.info("Now go and manually spend your collateral in Coin Control... pls...");
-
-            res.json({message: "Manual input required, Forge is too lazy to automatically smelt"});
+            smeltItem(smeltingItem.hash);
+            res.json({message: "Item smelted, collateral unlocked and peers are being notified."});
         }).catch(console.error);
     }).catch(console.error);
 });
@@ -534,6 +582,49 @@ let messageProcessor = setInterval(function() {
         console.info(" - Message test worked, yay!");
         messageQueue[0].res.send("Hi! :3");
         messageQueue.shift();
+    }
+
+    /* A peer wants to smelt an item */
+    else if (messageQueue[0].content.header === "smelt") {
+        // Some simple parameter tests
+        if (!messageQueue[0].content.item) {
+            console.error(" - Item hash missing from smelt request!");
+            messageQueue[0].res.json({error: "Missing item hash"});
+            return messageQueue.shift();
+        }
+        if (!messageQueue[0].content.sig) {
+            console.error(" - Item signature missing from smelt request!");
+            messageQueue[0].res.json({error: "Missing item smelt signature"});
+            return messageQueue.shift();
+        }
+
+        // Get the item
+        const smeltItem = getItem(messageQueue[0].content.item);
+        if (!smeltItem || smeltItem === null) {
+            console.error(" - Item couldn't be found!");
+            messageQueue[0].res.json({error: "Missing or Invalid item"});
+            return messageQueue.shift();
+        }
+
+        // Verify the smelt message's authenticity
+        zenzo.call("verifymessage", smeltItem.address, messageQueue[0].content.sig, "smelt").then(isGenuine => {
+            if (isGenuine) {
+                console.info(" - Signature verified! Message is genuine, performing smelt...");
+                messageQueue[0].res.json({message: "Smelt confirmed"});
+                messageQueue.shift();
+
+                // Begin the local smelt process for the item
+
+            } else {
+                console.error(" - Invalid signature, ignoring smelt request.");
+                messageQueue[0].res.json({error: "Invalid signature"});
+                return messageQueue.shift();
+            }
+        }).catch(function(){
+            console.error(" - Malformed signature, ignoring smelt request.");
+            messageQueue[0].res.json({error: "Malformed signature"});
+            return messageQueue.shift();
+        });
     }
     
     // No matching header found, just count the message as "processed"
@@ -561,6 +652,31 @@ app.post('/message/receive', (req, res) => {
 
 app.listen(80);
 
+/* ------------------ Core Forge Operations ------------------ */
+
+// Smelt an item, permanently excluding it from the Forge and allowing the collateral to be safely spent
+async function smeltItem (item) {
+
+    // If we own this item, unlock the collateral
+    const thisItem = getItem(item);
+    if (addy === thisItem.address) {
+        zenzo.call("gettransaction", thisItem.tx).then(rawtx => {
+            zenzo.call("lockunspent", true, [{"txid": thisItem.tx, "vout": rawtx.details[0].vout}]).then(didUnlock => {
+                if (didUnlock) console.info("- Item collateral was successfully unlocked in ZENZO Coin Control.");
+            }).catch(console.error);
+        }).catch(console.error);
+    }
+
+    // Add the item hash to the smelted DB
+    itemsSmelted.push(item);
+    await toDisk("smelted_items.json", itemsSmelted, true);
+    console.info("Database: Written " + itemsSmelted.length + " smelted items to disk.");
+
+    // Remove the item from our item lists
+    eraseItem(item);
+
+    return true;
+}
 
 /* ------------------ I/O Operations ------------------ */
 
@@ -591,7 +707,7 @@ for (let i=0; i<seednodes.length; i++) {
 /* ------------------ Daemon Operations ------------------ */
 
 async function lockCollateralUTXOs() {
-    console.info("--- (Re)Locking all item collaterals ---")
+    console.info("--- (Re)Locking all item collaterals ---");
     await asyncForEach(items, async (lItem) => {
         zenzo.call("gettransaction", lItem.tx).then(rawtx => {
             zenzo.call("lockunspent", false, [{"txid": lItem.tx, "vout": rawtx.details[0].vout}]).then(didLock => {
@@ -616,13 +732,21 @@ if (!fs.existsSync(appdata + 'data/')) {
             console.warn("Init: file 'items.json' missing from disk, ignoring...");
         else
             items = nDiskItems;
-        fromDisk("pending_items.json", true).then(nDiskPendingItems => {
-            if (nDiskPendingItems === null)
-                console.warn("Init: file 'pending_items.json' missing from disk, ignoring...");
-            else
-                itemsToValidate = nDiskPendingItems;
 
-            console.info("Init: loaded from disk:\n- Items: " + items.length + "\n- Pending Items: " + itemsToValidate.length);
+        fromDisk("smelted_items.json", true).then(nDiskSmeltedItems => {
+            if (nDiskSmeltedItems === null)
+                console.warn("Init: file 'smelted_items.json' missing from disk, ignoring...");
+            else
+                itemsSmelted = nDiskSmeltedItems;
+
+            fromDisk("pending_items.json", true).then(nDiskPendingItems => {
+                if (nDiskPendingItems === null)
+                    console.warn("Init: file 'pending_items.json' missing from disk, ignoring...");
+                else
+                    itemsToValidate = nDiskPendingItems;
+
+                console.info("Init: loaded from disk:\n- Items: " + items.length + "\n- Pending Items: " + itemsToValidate.length + "\n- Smelted Items: " + itemsSmelted.length);
+            });
         });
     });
 }
@@ -665,6 +789,9 @@ let janitor = setInterval(function() {
         console.log('Database: Written ' + items.length + ' items to disk.');
         toDisk("pending_items.json", itemsToValidate, true).then(res => {
             console.log('Database: Written ' + itemsToValidate.length + ' pending items to disk.');
+            toDisk("smelted_items.json", itemsSmelted, true).then(res => {
+                console.log('Database: Written ' + itemsSmelted.length + ' smelted items to disk.');
+            });
         });
     });
 }, 15000);
@@ -674,8 +801,8 @@ let addy = "";
 let zenzo = null;
 
 // Catch if the wallet RPC isn't available
-function rpcError() {
-    console.error("CRITICAL ERROR:\n - Unable to connect to ZENZO-RPC, please check config file and ZENZO Wallet availability.");
+function rpcError(err) {
+    console.error("CRITICAL ERROR:\n - Unable to connect to ZENZO-RPC, please check config file and ZENZO Wallet availability." + (err !== null) ? "\nE: '" + err + "'" : "");
     process.exit();
 }
 

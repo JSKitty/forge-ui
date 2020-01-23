@@ -70,7 +70,7 @@
             getForgeInventory(addy).then(inv => {
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + inv.items[i].name + '<br><b>Value: </b>' + inv.items[i].value + '</div>';
+                itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + inv.items[i].name + '<br><b>Value: </b>' + inv.items[i].value + '<br><button onclick="smeltItem(\'' + inv.items[i].hash + '\')">Smelt</button></div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
                 itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;opacity: 0.5;">' + "<b>Name:<b/> " + inv.pendingItems[i].name + '<br><b>Value: </b>' + inv.pendingItems[i].value + '</div>';
