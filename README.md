@@ -1,45 +1,43 @@
-# electron-quick-start
+# ZENZO Forge
 
-**Clone and run for a quick way to see Electron in action.**
+## Developer Setup
 
-This is a minimal Electron application based on the [Quick Start Guide](https://electronjs.org/docs/tutorial/quick-start) within the Electron documentation.
+```Coming Soon```
 
-**Use this app along with the [Electron API Demos](https://electronjs.org/#get-started) app for API code examples to help you get started.**
+## User Setup
 
-A basic Electron application needs just these files:
+1. Download the ZENZO Forge binaries:
 
-- `package.json` - Points to the app's main file and lists its details and dependencies.
-- `main.js` - Starts the app and creates a browser window to render HTML. This is the app's **main process**.
-- `index.html` - A web page to render. This is the app's **renderer process**.
+- Windows: https://mega.nz/#!JKwmBCZa!FIq_n9beYSLwkqH0MQvl-XN4UhzJ72svGW1-pOQdGY4
 
-You can learn more about each of these components within the [Quick Start Guide](https://electronjs.org/docs/tutorial/quick-start).
+2. Open `%appdata%/Zenzo/zenzo.conf` in a text editor, copy/paste the below config:
 
-## To Use
-
-To clone and run this repository you'll need [Git](https://git-scm.com) and [Node.js](https://nodejs.org/en/download/) (which comes with [npm](http://npmjs.com)) installed on your computer. From your command line:
-
-```bash
-# Clone this repository
-git clone https://github.com/electron/electron-quick-start
-# Go into the repository
-cd electron-quick-start
-# Install dependencies
-npm install
-# Run the app
-npm start
+```
+txindex=1
+rpcuser=user
+rpcpassword=pass
+listen=1
+server=1
 ```
 
-Note: If you're using Linux Bash for Windows, [see this guide](https://www.howtogeek.com/261575/how-to-run-graphical-linux-desktop-applications-from-windows-10s-bash-shell/) or use `node` from the command prompt.
+3. (Re)start ZENZO Core.
 
-## Resources for Learning Electron
+4. Start ZENZO Forge, wait for a white screen, close ZENZO Forge (File --> Exit)
 
-- [electronjs.org/docs](https://electronjs.org/docs) - all of Electron's documentation
-- [electronjs.org/community#boilerplates](https://electronjs.org/community#boilerplates) - sample starter apps created by the community
-- [electron/electron-quick-start](https://github.com/electron/electron-quick-start) - a very basic starter Electron app
-- [electron/simple-samples](https://github.com/electron/simple-samples) - small applications with ideas for taking them further
-- [electron/electron-api-demos](https://github.com/electron/electron-api-demos) - an Electron app that teaches you how to use Electron
-- [hokein/electron-sample-apps](https://github.com/hokein/electron-sample-apps) - small demo apps for the various Electron APIs
+5. Open `%appdata%/forge/data/` and paste the below file contents into it:
 
-## License
+```
+{
+    "wallet": {
+        "user": "user",
+        "pass": "pass",
+        "port": 26211,
+        "address": "Z..........."
+    },
+    "blockbook": "https://blockbook.zenzo.io/"
+}
+```
 
-[CC0 1.0 (Public Domain)](LICENSE.md)
+6. Replace the "Z...~" in the "address" field with an address from your ZENZO Core
+
+7. Save file, open ZENZO Forge and start crafting!
