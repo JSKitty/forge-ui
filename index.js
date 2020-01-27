@@ -173,7 +173,7 @@ async function validateItemBatch (res, nItems, reply) {
         if (!valid) {
             return console.error("Forge: Received item is not genuine, ignored.");
         }
-        if (getItem(nItem.hash) === null) {
+        if (getItem(nItem.hash, true) === null) {
             console.info("New item received from peer! (" + nItem.name + ") We have " + items.length + " items.");
             if (reply) res.send("Thanks!");
         }
@@ -274,10 +274,19 @@ function cleanItems (itemList) {
 }
 
 // Get an item object from our list by it's hash
-function getItem(itemArg) {
+function getItem(itemArg, includePending = false) {
     for (let i=0; i<items.length; i++) {
         if (items[i].hash === itemArg || items[i].tx === itemArg) return items[i];
     }
+
+    // (includePending only)
+    // Search for the item in the pending Items DB
+    if (includePending) {
+        for (let i=0; i<itemsToValidate.length; i++) {
+            if (itemsToValidate[i].hash === itemArg || itemsToValidate[i].tx === itemArg) return itemsToValidate[i];
+        }
+    }
+
     return null;
 }
 
@@ -534,10 +543,22 @@ app.post('/forge/create', (req, res) => {
                 zenzo.call("lockunspent", false, [{"txid": txid, "vout": rawtx.details[0].vout}]).then(didLock => {
                     if (didLock) console.info("- Item collateral was successfully locked in ZENZO Coin Control.");
                     res.json(nItem);
-                }).catch(console.error);
-            }).catch(console.error);
-        }).catch(console.error);
-    }).catch(console.error);
+                }).catch(function(){
+                    console.error("--- CRAFT FAILURE ---\n- ZENZO-RPC 'lockunspent false " + JSON.stringify([{"txid": txid, "vout": rawtx.details[0].vout}]) + "' failed");
+                    res.json({error: "Craft failure: ZENZO-RPC hangup"});
+                });
+            }).catch(function(){
+                console.error("--- CRAFT FAILURE ---\n- ZENZO-RPC 'gettransaction " + txid + "' failed");
+                res.json({error: "Craft failure: ZENZO-RPC hangup"});
+            });
+        }).catch(function(){
+            console.error("--- CRAFT FAILURE ---\n- ZENZO-RPC 'signmessage " + addy + " " + txid + "' failed");
+            res.json({error: "Craft failure: ZENZO-RPC hangup"});
+        });
+    }).catch(function(){
+        console.error("--- CRAFT FAILURE ---\n- ZENZO-RPC 'sendtoaddress " + addy + " " + req.body.amount.toFixed(8) + "' failed");
+        res.json({error: "Craft failure: ZENZO-RPC hangup"});
+    });
 });
 
 // Forge Smelt
@@ -548,7 +569,7 @@ app.post('/forge/smelt', (req, res) => {
 
     if (req.body.hash.length !== 64) return console.warn("Forge: Invalid item-hash or TX-hash.");
 
-    const smeltingItem = getItem(req.body.hash);
+    const smeltingItem = getItem(req.body.hash, true);
     if (smeltingItem === null) return res.json({error: "Smelting Item could not be found via it's item hash nor TX hash."});
 
     console.info("Preparing to smelt " + smeltingItem.name + "...");
@@ -599,15 +620,15 @@ let messageProcessor = setInterval(function() {
         }
 
         // Get the item
-        const smeltItem = getItem(messageQueue[0].content.item);
-        if (!smeltItem || smeltItem === null) {
+        const smeltedItem = getItem(messageQueue[0].content.item, true);
+        if (!smeltedItem || smeltedItem === null) {
             console.error(" - Item couldn't be found!");
             messageQueue[0].res.json({error: "Missing or Invalid item"});
             return messageQueue.shift();
         }
 
         // Verify the smelt message's authenticity
-        zenzo.call("verifymessage", smeltItem.address, messageQueue[0].content.sig, "smelt").then(isGenuine => {
+        zenzo.call("verifymessage", smeltedItem.address, messageQueue[0].content.sig, "smelt").then(isGenuine => {
             if (isGenuine) {
                 console.info(" - Signature verified! Message is genuine, performing smelt...");
                 messageQueue[0].res.json({message: "Smelt confirmed"});
@@ -658,7 +679,7 @@ app.listen(80);
 async function smeltItem (item) {
 
     // If we own this item, unlock the collateral
-    const thisItem = getItem(item);
+    const thisItem = getItem(item, true);
     if (addy === thisItem.address) {
         zenzo.call("gettransaction", thisItem.tx).then(rawtx => {
             zenzo.call("lockunspent", true, [{"txid": thisItem.tx, "vout": rawtx.details[0].vout}]).then(didUnlock => {
