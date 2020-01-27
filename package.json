@@ -1,18 +1,21 @@
 {
-  "name": "electron-quick-start",
-  "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "name": "zenzo-forge",
+  "version": "0.1.0",
+  "description": "A decentralized (P2P) metadata side-network for cryptocurrencies, optimized for gaming.",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
   },
-  "repository": "https://github.com/electron/electron-quick-start",
+  "repository": "https://github.com/JSKitty/forge-ui",
   "keywords": [
-    "Electron",
-    "quick",
-    "start",
-    "tutorial",
-    "demo"
+    "ZENZO",
+    "ZNZ",
+    "Decentralized",
+    "P2P",
+    "Crypto",
+    "Cryptocurrency",
+    "Gaming",
+    "Networking"
   ],
   "author": "GitHub",
   "license": "CC0-1.0",
