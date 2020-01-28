@@ -26,6 +26,8 @@ function debug(type) {
     if (debugType === "validations" && type === "validations") return true;
 }
 
+// The port that the Forge communicates on via http
+let forgePort = 80;
 
 // The max invalidation score we're willing to put up with before classing an item as invalid
 let maxInvalidScore = 50;
@@ -702,8 +704,6 @@ app.post('/message/receive', (req, res) => {
     }
 });
 
-app.listen(80);
-
 /* ------------------ Core Forge Operations ------------------ */
 
 // Smelt an item, permanently excluding it from the Forge and allowing the collateral to be safely spent
@@ -886,6 +886,11 @@ fromDisk("config.json", true).then(config => {
     let rpcAuth = {user: config.wallet.user, pass: config.wallet.pass, port: config.wallet.port};
     addy = config.wallet.address;
     zenzo = new RPC('http://' + rpcAuth.user + ':' + rpcAuth.pass + '@localhost:' + rpcAuth.port);
+    if (config.forgeport) {
+        forgePort = config.forgeport;
+    } else {
+        console.info("- Config missing 'forgeport' option, defaulting to '" + forgePort + "'.");
+    }
     explorer = config.blockbook;
     if (config.maxinvalidscore) {
         maxInvalidScore = config.maxinvalidscore;
@@ -893,10 +898,9 @@ fromDisk("config.json", true).then(config => {
     if (config.debug) {
         debugType = config.debug;
     } else {
-        console.info("- Config missing 'debug' option, defaulting to 'none'.");
-        debugType = "none";
+        console.info("- Config missing 'debug' option, defaulting to '" + debugType + "'.");
     }
-    console.info("\n--- Configuration ---\n - RPC Port: " + rpcAuth.port + "\n - Forge Address: " + addy + "\n - Debugging Mode: " + debugType + "\n - Max Invalidation Score: " + maxInvalidScore + "\n");
+    console.info("\n--- Configuration ---\n - RPC Port: " + rpcAuth.port + "\n - Forge Port: " + forgePort + "\n - Forge Address: " + addy + "\n - Debugging Mode: " + debugType + "\n - Max Invalidation Score: " + maxInvalidScore + "\n");
     zenzo.call("help").then(msg => {
         console.log("Connected to ZENZO-RPC successfully!");
 
@@ -904,6 +908,9 @@ fromDisk("config.json", true).then(config => {
         lockCollateralUTXOs().then(locked => {
             if (locked) console.info("All collaterals locked successfully!");
         });
+
+        // Start listening for Forge requests
+        app.listen(forgePort);
 
         // Let's bootstrap the validator with seednodes
         const seednodes = ["45.12.32.114", "144.91.87.251:8000"];
