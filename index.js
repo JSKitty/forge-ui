@@ -603,8 +603,10 @@ app.post('/forge/smelt', (req, res) => {
     zenzo.call("gettransaction", smeltingItem.tx).then(rawtx => {
         zenzo.call("lockunspent", true, [{"txid": smeltingItem.tx, "vout": rawtx.details[0].vout}]).then(didUnlock => {
             if (didUnlock) console.info("- Item collateral was successfully unlocked in ZENZO Coin Control.");
-            smeltItem(smeltingItem.hash);
-            res.json({message: "Item smelted, collateral unlocked and peers are being notified."});
+            zenzo.call("signmessage", addy, "smelt_" + smeltingItem.tx).then(sig => {
+                smeltItem(smeltingItem.hash, sig);
+                res.json({message: "Item smelted, collateral unlocked and peers are being notified."});
+            }).catch(console.error);
         }).catch(console.error);
     }).catch(console.error);
 });
@@ -655,14 +657,16 @@ let messageProcessor = setInterval(function() {
         }
 
         // Verify the smelt message's authenticity
-        zenzo.call("verifymessage", smeltedItem.address, messageQueue[0].content.sig, "smelt").then(isGenuine => {
+        zenzo.call("verifymessage", smeltedItem.address, messageQueue[0].content.sig, "smelt_" + smeltedItem.tx).then(isGenuine => {
             if (isGenuine) {
                 console.info(" - Signature verified! Message is genuine, performing smelt...");
                 messageQueue[0].res.json({message: "Smelt confirmed"});
                 messageQueue.shift();
 
                 // Begin the local smelt process for the item
-
+                smeltItem(smeltedItem.hash, messageQueue[0].content.sig).then(smelted => {
+                    console.info("- Item (" + smeltedItem.name + ") smelted successfully!");
+                });
             } else {
                 console.error(" - Invalid signature, ignoring smelt request.");
                 messageQueue[0].res.json({error: "Invalid signature"});
@@ -703,7 +707,7 @@ app.listen(80);
 /* ------------------ Core Forge Operations ------------------ */
 
 // Smelt an item, permanently excluding it from the Forge and allowing the collateral to be safely spent
-async function smeltItem (item) {
+async function smeltItem (item, signature = null) {
     if (peers.length === 0 || safeMode) return;
 
     // If we own this item, unlock the collateral
@@ -714,6 +718,30 @@ async function smeltItem (item) {
                 if (didUnlock) console.info("- Item collateral was successfully unlocked in ZENZO Coin Control.");
             }).catch(console.error);
         }).catch(console.error);
+    }
+
+    // If a signature was provided, broadcast the smelt to our peers
+    if (signature !== null) {
+        console.info("- Broadcasting smelt request to " + peers.length + " peer" + ((peers.length === 1) ? "" : "s"));
+        asyncForEach(peers, async (peer) => {
+            await superagent
+            .post(peer.host + "/message/receive")
+            .send({
+                header: "smelt",
+                item: item,
+                sig: signature
+            })
+            .then((res) => {
+                peer.lastPing = Date.now();
+                peer.setStale(false);
+                console.info(`- Peer "${peer.host}" (${peer.index}) responded to smelt with "${res.text}".`);
+            })
+            .catch((err) => {
+                // Peer didn't respond, mark as stale
+                peer.setStale(true);
+                console.warn(`- Unable to broadcast smelt to peer "${peer.host}" --> ${err.message}`);
+            });
+        });
     }
 
     // Add the item hash to the smelted DB
@@ -799,8 +827,6 @@ if (!fs.existsSync(appdata + 'data/')) {
 let janitor = setInterval(function() {
     // Only perform these when we've got atleast one peer and the RPC is present, otherwise we're potentially offline, or validating stale data
     if (peers.length === 0 || safeMode) return;
-
-    console.info(safeMode);
 
     // Ping peers
     peers.forEach(peer => {
