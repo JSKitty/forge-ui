@@ -632,7 +632,7 @@ let messageProcessor = setInterval(function() {
     // We've got mail! Open it up and find out it's intention
     console.info("Processing message...");
     if (messageQueue[0].content.header === "test") {
-        console.info(" - Message test worked, yay!");
+        console.info("- Message test worked, yay!");
         messageQueue[0].res.send("Hi! :3");
         messageQueue.shift();
     }
@@ -641,12 +641,12 @@ let messageProcessor = setInterval(function() {
     else if (messageQueue[0].content.header === "smelt") {
         // Some simple parameter tests
         if (!messageQueue[0].content.item) {
-            console.error(" - Item hash missing from smelt request!");
+            console.error("- Item hash missing from smelt request!");
             messageQueue[0].res.json({error: "Missing item hash"});
             return messageQueue.shift();
         }
         if (!messageQueue[0].content.sig) {
-            console.error(" - Item signature missing from smelt request!");
+            console.error("- Item signature missing from smelt request!");
             messageQueue[0].res.json({error: "Missing item smelt signature"});
             return messageQueue.shift();
         }
@@ -654,7 +654,7 @@ let messageProcessor = setInterval(function() {
         // Get the item
         const smeltedItem = getItem(messageQueue[0].content.item, true);
         if (!smeltedItem || smeltedItem === null) {
-            console.error(" - Item couldn't be found!");
+            console.error("- Item couldn't be found!");
             messageQueue[0].res.json({error: "Missing or Invalid item"});
             return messageQueue.shift();
         }
@@ -662,7 +662,7 @@ let messageProcessor = setInterval(function() {
         // Verify the smelt message's authenticity
         zenzo.call("verifymessage", smeltedItem.address, messageQueue[0].content.sig, "smelt_" + smeltedItem.tx).then(isGenuine => {
             if (isGenuine) {
-                console.info(" - Signature verified! Message is genuine, performing smelt...");
+                console.info("- Signature verified! Message is genuine, performing smelt...");
                 messageQueue[0].res.json({message: "Smelt confirmed"});
 
                 // Begin the local smelt process for the item
@@ -672,12 +672,12 @@ let messageProcessor = setInterval(function() {
 
                 return messageQueue.shift();
             } else {
-                console.error(" - Invalid signature, ignoring smelt request.");
+                console.error("- Invalid signature, ignoring smelt request.");
                 messageQueue[0].res.json({error: "Invalid signature"});
                 return messageQueue.shift();
             }
         }).catch(function(){
-            console.error(" - Malformed signature, ignoring smelt request.");
+            console.error("- Malformed signature, ignoring smelt request.");
             messageQueue[0].res.json({error: "Malformed signature"});
             return messageQueue.shift();
         });
@@ -749,7 +749,7 @@ async function smeltItem (item, signature = null) {
     // Add the item hash to the smelted DB
     itemsSmelted.push(item);
     await toDisk("smelted_items.json", itemsSmelted, true);
-    console.info("Database: Written " + itemsSmelted.length + " smelted items to disk.");
+    console.info("- Written " + itemsSmelted.length + " smelted items to disk.");
 
     // Remove the item from our item lists
     eraseItem(item);
