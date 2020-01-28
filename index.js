@@ -26,6 +26,10 @@ function debug(type) {
     if (debugType === "validations" && type === "validations") return true;
 }
 
+
+// Safe mode, this can be used if the RPC is missing or our peers are acting unstable
+let safeMode = false;
+
 /* ------------------ NETWORK ------------------ */
 // The list of all known peers
 let peers = [];
@@ -336,6 +340,7 @@ class Peer {
     }
 
     connect(shouldPing) {
+        if (safeMode) return;
         if (getPeer(this.host) === null) {
             if (!shouldPing) {
                 peers.push(this);
@@ -410,6 +415,7 @@ class Peer {
             .post(this.host + "/forge/sync")
             .send((items.length + itemsToValidate.length).toString())
             .then((res) => {
+                if (safeMode) return;
                 // Peer sent items, scan through them and merge lists if necessary
                 this.lastPing = Date.now();
                 this.setStale(false);
@@ -443,6 +449,7 @@ class ReceivedMessage {
 // Ping
 // An easy way to check if a node is online and responsive
 app.post('/ping', (req, res) => {
+    if (safeMode) return
     let ip = cleanIP(req.ip);
 
     // We don't want to connect to ourselves
@@ -517,6 +524,7 @@ app.post('/forge/inventory', (req, res) => {
 // Forge Account
 // The endpoint for getting the general information of a user
 app.post('/forge/account', (req, res) => {
+    if (peers.length === 0 || safeMode) return res.json({error: "Account information is unavailable while the Forge is in Safe Mode and/or Offline."});
     let ip = cleanIP(req.ip);
     if (!isAuthed(req)) return console.warn("Forge: A non-authorized Forge was made by '" + ip + "', ignoring.");
 
@@ -529,6 +537,7 @@ app.post('/forge/account', (req, res) => {
 // Forge Create
 // The endpoint for crafting new items, backed by ZNZ and validated by the ZENZO Core protocol
 app.post('/forge/create', (req, res) => {
+    if (peers.length === 0 || safeMode) return res.json({error: "Crafting is unavailable while the Forge is in Safe Mode and/or Offline."});
     let ip = cleanIP(req.ip);
     if (!isAuthed(req)) return console.warn("Forge: A non-authorized Forge was made by '" + ip + "', ignoring.");
 
@@ -578,6 +587,7 @@ app.post('/forge/create', (req, res) => {
 // Forge Smelt
 // The endpoint for smelting (destroying) items and converting them back into their native ZNZ value.
 app.post('/forge/smelt', (req, res) => {
+    if (peers.length === 0 || safeMode) return res.json({error: "Smelting is unavailable while the Forge is in Safe Mode and/or Offline."});
     let ip = cleanIP(req.ip);
     if (!isAuthed(req)) return console.warn("Forge: A non-authorized Forge was made by '" + ip + "', ignoring.");
 
@@ -691,6 +701,7 @@ app.listen(80);
 
 // Smelt an item, permanently excluding it from the Forge and allowing the collateral to be safely spent
 async function smeltItem (item) {
+    if (peers.length === 0 || safeMode) return;
 
     // If we own this item, unlock the collateral
     const thisItem = getItem(item, true);
@@ -731,13 +742,6 @@ async function fromDisk (file, isJson) {
 }
 
 
-/* Core Node Mechanics */
-// First! Let's bootstrap the validator with seednodes
-const seednodes = ["45.12.32.114", "144.91.87.251:8000"];
-for (let i=0; i<seednodes.length; i++) {
-    let seednode = new Peer(seednodes[i]);
-    seednode.connect(true);
-}
 
 /* ------------------ Daemon Operations ------------------ */
 
@@ -752,6 +756,8 @@ async function lockCollateralUTXOs() {
     });
     return true;
 }
+
+/* Core Node Mechanics */
 
 // Load all relevent data from disk (if it already exists)
 // Item data
@@ -788,6 +794,11 @@ if (!fs.existsSync(appdata + 'data/')) {
 
 // Start the "janitor" loop to ping peers, validate items and save to disk at intervals
 let janitor = setInterval(function() {
+    // Only perform these when we've got atleast one peer and the RPC is present, otherwise we're potentially offline, or validating stale data
+    if (peers.length === 0 || safeMode) return;
+
+    console.info(safeMode);
+
     // Ping peers
     peers.forEach(peer => {
         peer.ping();
@@ -836,9 +847,9 @@ let addy = "";
 let zenzo = null;
 
 // Catch if the wallet RPC isn't available
-function rpcError(err) {
-    console.error("CRITICAL ERROR:\n - Unable to connect to ZENZO-RPC, please check config file and ZENZO Wallet availability." + (err !== null) ? "\nE: '" + err + "'" : "");
-    process.exit();
+function rpcError() {
+    peers = [];
+    safeMode = true;
 }
 
 // Load variables from disk config
@@ -859,8 +870,18 @@ fromDisk("config.json", true).then(config => {
         // Incase the zenzod daemon was restarted, re-lock our collateral UTXOs to prevent accidental spends
         lockCollateralUTXOs().then(locked => {
             if (locked) console.info("All collaterals locked successfully!");
-        })
-    }).catch(rpcError);
+        });
+
+        // Let's bootstrap the validator with seednodes
+        const seednodes = ["45.12.32.114", "144.91.87.251:8000"];
+        for (let i=0; i<seednodes.length; i++) {
+            let seednode = new Peer(seednodes[i]);
+            seednode.connect(true);
+        }
+    }).catch(function(){
+        console.error("Failed to connect to ZENZO-RPC, running Forge in Safe Mode.");
+        rpcError();
+    });
 });
 
 // Save our AuthKey to disk to allow other applications to access the user's Forge node during private actions

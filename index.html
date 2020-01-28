@@ -19,7 +19,7 @@
       background-image: linear-gradient(180deg, #8678dc, #48dfe1);">
 
       <h1 style="text-align: center;font-family: cursive;margin-top: 0;padding-top: 25px;">ZENZO Forge Inventory</h1>
-      <p style="text-align: center;font-family: cursive;">Peers: <b id="peerCount">0</b></p>
+      <p style="text-align: center;font-family: cursive;">Peers: <b id="peerCount">Offline (No peers connected)</b></p>
       <br>
       <span id="items"></span>
 
@@ -37,6 +37,7 @@
 
       <script>
           function craftItem() {
+            if (peers.length === 0) return;
             let nName = document.getElementById("new_item_name").value;
             let nValue = Number(document.getElementById("new_item_value").value);
 
@@ -81,8 +82,13 @@
 
 
           setInterval(function() {
-            document.getElementById("peerCount").innerHTML = peers.length;
-            refreshInventory();
+            if (safeMode) return document.getElementById("peerCount").innerHTML = "Offline (Missing RPC Connection)<br>Please start ZENZO Core, then restart the Forge.";
+            if (peers.length === 0) {
+              document.getElementById("peerCount").innerHTML = "Offline (No peers connected)";
+            } else {
+              document.getElementById("peerCount").innerHTML = peers.length;
+              refreshInventory();
+            }
           }, 1000);
 
           refreshInventory();
