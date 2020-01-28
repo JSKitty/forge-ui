@@ -27,6 +27,9 @@ function debug(type) {
 }
 
 
+// The max invalidation score we're willing to put up with before classing an item as invalid
+let maxInvalidScore = 50;
+
 // Safe mode, this can be used if the RPC is missing or our peers are acting unstable
 let safeMode = false;
 
@@ -255,7 +258,7 @@ function wasItemSmelted(item) {
     return itemsSmelted.includes(item);
 }
 
-// Increments the invalidation score of an item, if this score reaches 25, the item is considered irreversibly invalid, and removed from the DB permanently
+// Increments the invalidation score of an item, if this score reaches maxInvalidScore, the item is considered irreversibly invalid, and removed from the DB permanently
 function addInvalidationScore(item, score) {
     for (let i=0; i<items.length; i++) {
         if (item.tx === items[i].tx) {
@@ -263,7 +266,7 @@ function addInvalidationScore(item, score) {
             items[i].invalidScore += score;
             item.invalidScore = items[i].invalidScore;
             if (debug("validations")) console.info("An invalidation score of '" + score + "' has been applied to '" + item.name + "', now totalling '" + items[i].invalidScore + "' invalidation score.");
-            if (item.invalidScore >= 25) {
+            if (item.invalidScore >= maxInvalidScore) {
                 items.splice(i, 1);
                 if (debug("validations")) console.info(" - Item has been abandoned due to exceeding the invalidation score threshold.");
             }
@@ -275,7 +278,7 @@ function addInvalidationScore(item, score) {
             itemsToValidate[i].invalidScore += score;
             item.invalidScore = itemsToValidate[i].invalidScore;
             if (debug("validations")) console.info("An invalidation score of '" + score + "' has been applied to '" + item.name + "', now totalling '" + itemsToValidate[i].invalidScore + "' invalidation score.");
-            if (item.invalidScore >= 25) {
+            if (item.invalidScore >= maxInvalidScore) {
                 itemsToValidate.splice(i, 1);
                 if (debug("validations")) console.info(" - Item has been abandoned due to exceeding the invalidation score threshold.");
             }
@@ -840,7 +843,7 @@ let janitor = setInterval(function() {
             });
         });
     });
-}, 15000);
+}, 30000);
 
 // Setup the wallet variables
 let addy = "";
@@ -858,12 +861,16 @@ fromDisk("config.json", true).then(config => {
     addy = config.wallet.address;
     zenzo = new RPC('http://' + rpcAuth.user + ':' + rpcAuth.pass + '@localhost:' + rpcAuth.port);
     explorer = config.blockbook;
+    if (config.maxinvalidscore) {
+        maxInvalidScore = config.maxinvalidscore;
+    }
     if (config.debug) {
         debugType = config.debug;
     } else {
         console.info("- Config missing 'debug' option, defaulting to 'none'.");
         debugType = "none";
     }
+    console.info("\n--- Configuration ---\n - RPC Port: " + rpcAuth.port + "\n - Forge Address: " + addy + "\n - Debugging Mode: " + debugType + "\n - Max Invalidation Score: " + maxInvalidScore + "\n");
     zenzo.call("help").then(msg => {
         console.log("Connected to ZENZO-RPC successfully!");
 
