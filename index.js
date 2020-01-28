@@ -496,7 +496,8 @@ app.post('/forge/sync', (req, res) => {
     // Check if they have a different amount of items to us, if so, ask for them
     if (Number(req.body) != (items.length + itemsToValidate.length)) {
         req.peer = getPeer("http://" + ip);
-        req.peer.getItems();
+        if (req.peer !== null)
+            req.peer.getItems();
     }
 
     let obj = {items: items, pendingItems: itemsToValidate};
