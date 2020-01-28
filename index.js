@@ -747,8 +747,8 @@ async function lockCollateralUTXOs() {
         zenzo.call("gettransaction", lItem.tx).then(rawtx => {
             zenzo.call("lockunspent", false, [{"txid": lItem.tx, "vout": rawtx.details[0].vout}]).then(didLock => {
                 if (didLock) console.info("- Item collateral was successfully locked in ZENZO Coin Control.");
-            }).catch(console.error);
-        }).catch(console.error);
+            }).catch(function(){});
+        }).catch(function(){});
     });
     return true;
 }
