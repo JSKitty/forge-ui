@@ -13,6 +13,19 @@ process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
 let appdata = process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + 'Library/Preferences' : '/var/local');
 appdata = appdata.replace(/\\/g, '/') + '/forge/';
 
+/* ------------------ GLOBAL SETTINGS ------------------ */
+// The debugging mode, this allows the user to customize what the forge should log
+// Debug types: all, none, validations
+let debugType = "none";
+
+// Return if the current debug mode includes the caller's debug type
+function debug(type) {
+    if (debugType === "all") return true;
+    if (debugType === "none") return false;
+
+    if (debugType === "validations" && type === "validations") return true;
+}
+
 /* ------------------ NETWORK ------------------ */
 // The list of all known peers
 let peers = [];
@@ -73,12 +86,12 @@ async function isItemValid (nItem, approve = false) {
     try {
         if (wasItemSmelted(nItem.hash)) {
             eraseItem(nItem.hash);
-            console.error("Forge: Item '" + nItem.name + "' was previously smelted.");
+            if (debug("validations")) console.error("Forge: Item '" + nItem.name + "' was previously smelted.");
             return false;
         }
         let rawTx = await zenzo.call("getrawtransaction", nItem.tx, 1);
         if (!rawTx || !rawTx.vout || !rawTx.vout[0]) {
-            console.warn('Forge: Item "' + nItem.name + '" is not in the blockchain.');
+            if (debug("validations")) console.warn('Forge: Item "' + nItem.name + '" is not in the blockchain.');
             disproveItem(nItem);
             addInvalidationScore(nItem, 2);
             return false;
@@ -86,39 +99,39 @@ async function isItemValid (nItem, approve = false) {
         for (let i=0; i<rawTx.vout.length; i++) {
             if (rawTx.vout[i].value === nItem.value) {
                 if (rawTx.vout[i].scriptPubKey.addresses.includes(nItem.address)) {
-                    console.log("Found pubkey of item...");
+                    if (debug("validations")) console.log("Found pubkey of item...");
                     let isSigGenuine = await zenzo.call("verifymessage", nItem.address, nItem.sig, nItem.tx);
                     if (isSigGenuine) {
-                        console.info("Sig is genuine...");
+                        if (debug("validations")) console.info("Sig is genuine...");
                         if (hash(nItem.tx + nItem.sig + nItem.address + nItem.name + nItem.value) === nItem.hash) {
-                            console.info("Hash is genuine...");
+                            if (debug("validations")) console.info("Hash is genuine...");
                             let res = await superagent.get(explorer + 'api/v2/utxo/' + nItem.address + "?confirmed=false");
                             res = JSON.parse(res.text);
                             if (res.length === 0) {
-                                console.warn("UTXO couldn't be found, item '" + nItem.name + "' has no UTXOs");
+                                if (debug("validations")) console.warn("UTXO couldn't be found, item '" + nItem.name + "' has no UTXOs");
                                 disproveItem(nItem);
                                 addInvalidationScore(nItem, 5);
                                 return false; // UTXO has been spent
                             }
                             for (let i=0; i<res.length; i++) {
                                 if (res[i].txid === nItem.tx) {
-                                    console.warn("Found unspent UTXO collateral...");
+                                    if (debug("validations")) console.warn("Found unspent UTXO collateral...");
                                     if (approve) approveItem(nItem);
                                     return true; // Found unspent collateral UTXO
                                 }
                             }
-                            console.warn("UTXO couldn't be found, item '" + nItem.name + "' does not have a collateral UTXO");
+                            if (debug("validations")) console.warn("UTXO couldn't be found, item '" + nItem.name + "' does not have a collateral UTXO");
                             disproveItem(nItem);
                             addInvalidationScore(nItem, 5);
                             return false; // Couldn't find unspent collateral UTXO
                         } else {
-                            console.info("Hash is not genuine...");
+                            if (debug("validations")) console.info("Hash is not genuine...");
                             disproveItem(nItem);
                             addInvalidationScore(nItem, 12.5);
                             return false;
                         }
                     } else {
-                        console.info("Sig is not genuine...");
+                        if (debug("validations")) console.info("Sig is not genuine...");
                         disproveItem(nItem);
                         addInvalidationScore(nItem, 12.5);
                         return false;
@@ -143,7 +156,7 @@ async function validateItems (revalidate = false) {
             for (let i=0; i<items.length; i++) {
                 if (items[i].tx === item.tx) {
                     items.splice(i, 1); // Erase invalid item from our list
-                    console.warn("Erased bad item! (" + item.name + " - " + item.tx + ")");
+                    if (debug("validations")) console.warn("Erased bad item! (" + item.name + " - " + item.tx + ")");
                 }
             }
         }
@@ -163,7 +176,7 @@ async function validateItemBatch (res, nItems, reply) {
 
         // Check if the item was previously smelted
         if (wasItemSmelted(nItem.hash)) {
-            console.error("Rejected item (" + nItem.name + ") from peer, item has been smelted");
+            if (debug("validations")) console.error("Rejected item (" + nItem.name + ") from peer, item has been smelted");
             if (reply) res.send("Invalid item (" + nItem.name + "), marked as smelted.");
             return false;
         }
@@ -171,7 +184,8 @@ async function validateItemBatch (res, nItems, reply) {
         // Check if the item's contents are genuine
         let valid = await isItemValid(nItem, true);
         if (!valid) {
-            return console.error("Forge: Received item is not genuine, ignored.");
+            if (debug("validations")) console.error("Forge: Received item is not genuine, ignored.");
+            return;
         }
         if (getItem(nItem.hash, true) === null) {
             console.info("New item received from peer! (" + nItem.name + ") We have " + items.length + " items.");
@@ -213,7 +227,7 @@ function disproveItem(item) {
         if (item.tx === items[i].tx) {
             itemsToValidate.push(items[i]);
             items.splice(i, 1);
-            console.info("An item has been disproved!\n - Item '" + item.name + "' (" + item.tx + ") has been removed as a verified item and is now pending.");
+            if (debug("validations")) console.info("An item has been disproved!\n - Item '" + item.name + "' (" + item.tx + ") has been removed as a verified item and is now pending.");
         }
     }
 }
@@ -244,10 +258,10 @@ function addInvalidationScore(item, score) {
             if (!items[i].invalidScore) items[i].invalidScore = 0;
             items[i].invalidScore += score;
             item.invalidScore = items[i].invalidScore;
-            console.info("An invalidation score of '" + score + "' has been applied to '" + item.name + "', now totalling '" + items[i].invalidScore + "' invalidation score.");
+            if (debug("validations")) console.info("An invalidation score of '" + score + "' has been applied to '" + item.name + "', now totalling '" + items[i].invalidScore + "' invalidation score.");
             if (item.invalidScore >= 25) {
                 items.splice(i, 1);
-                console.info(" - Item has been abandoned due to exceeding the invalidation score threshold.");
+                if (debug("validations")) console.info(" - Item has been abandoned due to exceeding the invalidation score threshold.");
             }
         }
     }
@@ -256,10 +270,10 @@ function addInvalidationScore(item, score) {
             if (!itemsToValidate[i].invalidScore) itemsToValidate[i].invalidScore = 0;
             itemsToValidate[i].invalidScore += score;
             item.invalidScore = itemsToValidate[i].invalidScore;
-            console.info("An invalidation score of '" + score + "' has been applied to '" + item.name + "', now totalling '" + itemsToValidate[i].invalidScore + "' invalidation score.");
+            if (debug("validations")) console.info("An invalidation score of '" + score + "' has been applied to '" + item.name + "', now totalling '" + itemsToValidate[i].invalidScore + "' invalidation score.");
             if (item.invalidScore >= 25) {
                 itemsToValidate.splice(i, 1);
-                console.info(" - Item has been abandoned due to exceeding the invalidation score threshold.");
+                if (debug("validations")) console.info(" - Item has been abandoned due to exceeding the invalidation score threshold.");
             }
         }
     }
@@ -458,7 +472,7 @@ app.post('/forge/receive', (req, res) => {
     let nItems = req.body;
 
     validateItemBatch(res, nItems, true).then(ress => {
-        console.log('Forge: Validated item batch from "' + ip + '"');
+        if (debug("validations")) console.log('Forge: Validated item batch from "' + ip + '"');
     });
 });
 
@@ -783,7 +797,7 @@ let janitor = setInterval(function() {
     // Validate pending items
     if (itemsToValidate.length > 0) {
         validateItems().then(validated => {
-            console.log("Validated " + validated + " item(s).")
+            if (debug("validations")) console.log("Validated " + validated + " item(s).")
             if (itemsToValidate.length === validated) {
                 peers.forEach(peer => {
                     peer.sendItems(itemsToValidate);
@@ -796,7 +810,7 @@ let janitor = setInterval(function() {
     // Send our validated items to peers
     if (items.length > 0) {
         validateItems(true).then(validated => {
-            console.log("Revalidated " + validated + " item(s).")
+            if (debug("validations")) console.log("Revalidated " + validated + " item(s).")
             if (items.length === validated) {
                 peers.forEach(peer => {
                     peer.sendItems(items); // Temp, will be optimized later
@@ -833,6 +847,12 @@ fromDisk("config.json", true).then(config => {
     addy = config.wallet.address;
     zenzo = new RPC('http://' + rpcAuth.user + ':' + rpcAuth.pass + '@localhost:' + rpcAuth.port);
     explorer = config.blockbook;
+    if (config.debug) {
+        debugType = config.debug;
+    } else {
+        console.info("- Config missing 'debug' option, defaulting to 'none'.");
+        debugType = "none";
+    }
     zenzo.call("help").then(msg => {
         console.log("Connected to ZENZO-RPC successfully!");
 
