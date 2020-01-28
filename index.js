@@ -664,12 +664,13 @@ let messageProcessor = setInterval(function() {
             if (isGenuine) {
                 console.info(" - Signature verified! Message is genuine, performing smelt...");
                 messageQueue[0].res.json({message: "Smelt confirmed"});
-                messageQueue.shift();
 
                 // Begin the local smelt process for the item
                 smeltItem(smeltedItem.hash, messageQueue[0].content.sig).then(smelted => {
                     console.info("- Item (" + smeltedItem.name + ") smelted successfully!");
                 });
+
+                return messageQueue.shift();
             } else {
                 console.error(" - Invalid signature, ignoring smelt request.");
                 messageQueue[0].res.json({error: "Invalid signature"});
