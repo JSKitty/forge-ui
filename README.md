@@ -8,7 +8,7 @@
 
 1. Download the ZENZO Forge binaries:
 
-- Windows: https://mega.nz/#!JKwmBCZa!FIq_n9beYSLwkqH0MQvl-XN4UhzJ72svGW1-pOQdGY4
+- Windows: https://mega.nz/#!AXQxkSqK!dSYE4LDgaNvIfkhZhnq0vzvt4pD82OfexPLG1elMxf4
 
 2. Open `%appdata%/Zenzo/zenzo.conf` in a text editor, copy/paste the below config:
 
@@ -24,7 +24,7 @@ server=1
 
 4. Start ZENZO Forge, wait for a white screen, close ZENZO Forge (File --> Exit)
 
-5. Open `%appdata%/forge/data/config.json` and paste the below file contents into it:
+5. Open `%appdata%/forge/data/config.json` (Create the file, if it doesn't already exist) and paste the below file contents into it:
 
 ```
 {
