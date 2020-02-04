@@ -6,9 +6,6 @@ const RPC = require('bitcoin-rpc-promise');
 const nanoid = require('nanoid');
 const x11 = require('x11-hash-js');
 
-// TEMP EXPLORER FIX, INSECURE!
-process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0;
-
 // System Application Data directory
 let appdata = process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + 'Library/Preferences' : '/var/local');
 appdata = appdata.replace(/\\/g, '/') + '/forge/';
@@ -30,7 +27,7 @@ function debug(type) {
 let forgePort = 80;
 
 // The max invalidation score we're willing to put up with before classing an item as invalid
-let maxInvalidScore = 50;
+let maxInvalidScore = 25;
 
 // Safe mode, this can be used if the RPC is missing or our peers are acting unstable
 let safeMode = false;
@@ -50,10 +47,6 @@ let itemsSmelted = [];
 
 // The list of messages that are in the processing queue
 let messageQueue = [];
-
-// The explorer API to use for checking if a UTXO is spent (CENTRALIZED)
-/* This will eventually be replaced by a home-made system that saves a slimmed UTXO tree on-disk to trustlessly validate the on-chain item collateral */
-let explorer = "";
 
 // Get a peer object from our list by it's host or index
 function getPeer (peerArg) {
@@ -114,33 +107,53 @@ async function isItemValid (nItem, approve = false) {
                         if (debug("validations")) console.info("Sig is genuine...");
                         if (hash(nItem.tx + nItem.sig + nItem.address + nItem.name + nItem.value) === nItem.hash) {
                             if (debug("validations")) console.info("Hash is genuine...");
-                            let res = await superagent.get(explorer + 'api/v2/utxo/' + nItem.address + "?confirmed=false");
-                            res = JSON.parse(res.text);
-                            if (res.length === 0) {
-                                if (debug("validations")) console.warn("UTXO couldn't be found, item '" + nItem.name + "' has no UTXOs");
-                                disproveItem(nItem);
-                                addInvalidationScore(nItem, 5);
-                                return false; // UTXO has been spent
+                            let res = await zenzo.call("gettxout", nItem.tx, 0);
+                            let resSecondary = await zenzo.call("gettxout", nItem.tx, 1);
+
+                            // Do we have atleast one UTXO?
+                            if (res === null) {
+                                res = {value: 0, scriptPubKey: {addresses: [""]}}
+                                if (resSecondary === null) {
+                                    if (debug("validations")) console.warn("UTXO couldn't be found, item '" + nItem.name + "' has no UTXO");
+                                    disproveItem(nItem);
+                                    addInvalidationScore(nItem, 5);
+                                    return false; // UTXO has been spent
+                                }
+                            } else if (resSecondary === null) {
+                                resSecondary = {value: 0, scriptPubKey: {addresses: [""]}}
                             }
-                            for (let i=0; i<res.length; i++) {
-                                if (res[i].txid === nItem.tx) {
-                                    if (debug("validations")) console.warn("Found unspent UTXO collateral...");
+
+                            // Do any of the UTXOs contain matching info?
+                            if (res.value === nItem.value || resSecondary.value === nItem.value) {
+                                if (res.scriptPubKey.addresses[0] === nItem.address || resSecondary.scriptPubKey.addresses[0] === nItem.address) {
+                                    if (debug("validations")) console.info("Found unspent UTXO collateral...");
                                     if (approve) approveItem(nItem);
                                     return true; // Found unspent collateral UTXO
+                                } else {
+                                    if (debug("validations")) console.warn("Item address (" + nItem.address + ") doesn't match it's TX collateral address (" + ((res !== null) ? res : resSecondary).scriptPubKey.addresses[0] + ")");
+                                    disproveItem(nItem);
+                                    addInvalidationScore(nItem, 12.5);
+                                    return false;
                                 }
+                            } else {
+                                if (debug("validations")) console.warn("Item value (" + nItem.value + ") doesn't match it's TX collateral value (" + ((res !== null) ? res : resSecondary).value + ")");
+                                disproveItem(nItem);
+                                addInvalidationScore(nItem, 12.5);
+                                return false;
                             }
+
                             if (debug("validations")) console.warn("UTXO couldn't be found, item '" + nItem.name + "' does not have a collateral UTXO");
                             disproveItem(nItem);
                             addInvalidationScore(nItem, 5);
                             return false; // Couldn't find unspent collateral UTXO
                         } else {
-                            if (debug("validations")) console.info("Hash is not genuine...");
+                            if (debug("validations")) console.warn("Hash is not genuine...");
                             disproveItem(nItem);
                             addInvalidationScore(nItem, 12.5);
                             return false;
                         }
                     } else {
-                        if (debug("validations")) console.info("Sig is not genuine...");
+                        if (debug("validations")) console.warn("Sig is not genuine...");
                         disproveItem(nItem);
                         addInvalidationScore(nItem, 12.5);
                         return false;
@@ -871,7 +884,7 @@ let janitor = setInterval(function() {
             });
         });
     });
-}, 30000);
+}, 15000);
 
 // Setup the wallet variables
 let addy = "";
@@ -893,7 +906,6 @@ fromDisk("config.json", true).then(config => {
     } else {
         console.info("- Config missing 'forgeport' option, defaulting to '" + forgePort + "'.");
     }
-    explorer = config.blockbook;
     if (config.maxinvalidscore) {
         maxInvalidScore = config.maxinvalidscore;
     }
