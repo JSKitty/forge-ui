@@ -326,6 +326,35 @@ function getItem(itemArg, includePending = false) {
     return null;
 }
 
+// Gets an array of all profiles on the network
+function getAllProfiles(includePending = false) {
+    let profiles = [];
+    for (let i=0; i<items.length; i++) {
+        if (items[i].name.startsWith("zenzo.")) {
+            profiles.push(items[i]);
+        }
+    }
+    if (includePending) {
+        for (let i=0; i<itemsToValidate.length; i++) {
+            if (itemsToValidate[i].name.startsWith("zenzo.")) {
+                profiles.push(itemsToValidate[i]);
+            }
+        }
+    }
+    return profiles;
+}
+
+// Gets a single profile by it's username or address
+function getProfile(name, includePending = false) {
+    let profiles = getAllProfiles(includePending);
+    for (let i=0; i<profiles.length; i++) {
+        if (profiles[i].name === "zenzo." + name || profiles[i].address === name) {
+            return profiles[i];
+        }
+    }
+    return null;
+}
+
 // Hash a string with x11
 function hash(txt) {
     return x11.digest(txt);
@@ -535,6 +564,20 @@ app.post('/forge/inventory', (req, res) => {
 
     let obj = {items: ourItems, pendingItems: ourPendingItems};
     res.send(JSON.stringify(obj));
+});
+
+// Forge Profiles
+// An endpoint that returns all known user profiles
+app.post('/forge/profiles', (req, res) => {
+    res.send(JSON.stringify(getAllProfiles(true)));
+});
+
+// Forge Profile
+// An endpoint that returns a profile by it's name or address
+app.post('/forge/profile', (req, res) => {
+    if (req.body.name && req.body.name.length >= 1) {
+        res.send(JSON.stringify(getProfile(req.body.name, true)));
+    }
 });
 
 

@@ -4,22 +4,90 @@
     <meta charset="UTF-8">
     <title>ZENZO Forge</title>
   </head>
+  <style>
+  .sidenav {
+    height: 100%;
+    width: 160px;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-image: linear-gradient(180deg, #8678dc, #48dfe1);
+    overflow-x: hidden;
+    padding-top: 20px;
+    font-weight: bold;
+  }
+
+  .sidenav a {
+    padding: 6px 8px 6px 16px;
+    text-decoration: none;
+    font-size: 25px;
+    color: white;
+    display: block;
+  }
+
+  .sidenav a:hover {
+    color: #f1f1f1;
+  }
+  </style>
+
   <body style="
     margin: 0;
     height: 100%;
     padding: 0;
-    background-color: #48dfe1;
+    background-color: white;
     overflow-x: hidden;
     overflow-y: auto;
-    color: white;
-    font-family: cursive;">
-    
-    <div style="
-      height: 100vh;
-      background-image: linear-gradient(180deg, #8678dc, #48dfe1);">
+    color: black;
+    font-family: helvetica;">
 
-      <h1 style="text-align: center;font-family: cursive;margin-top: 0;padding-top: 25px;">ZENZO Forge Inventory</h1>
-      <p style="text-align: center;font-family: cursive;">Peers: <b id="peerCount">Offline (No peers connected)</b></p>
+    <div class="sidenav">
+      <a onclick="openProfile();" style="cursor: pointer;">Profile</a>
+      <a onclick="openWallet();" style="cursor: pointer;">Wallet</a>
+      <a onclick="openInventory();" style="cursor: pointer;">Inventory</a>
+    </div>
+
+    <script>
+      function openWallet() {
+        document.getElementById("wallet").style.display = "block";
+        document.getElementById("inventory").style.display = "none";
+        document.getElementById("new_profile").style.display = "none";
+        document.getElementById("profile").style.display = "none";
+      }
+
+      function openInventory() {
+        document.getElementById("wallet").style.display = "none";
+        document.getElementById("inventory").style.display = "block";
+        document.getElementById("new_profile").style.display = "none";
+        document.getElementById("profile").style.display = "none";
+      }
+
+      function openProfile() {
+        loadProfile().then(hasProfile => {
+          console.info(hasProfile)
+          if (hasProfile) {
+            document.getElementById("wallet").style.display = "none";
+            document.getElementById("inventory").style.display = "none";
+            document.getElementById("new_profile").style.display = "none";
+            document.getElementById("profile").style.display = "block";
+          } else {
+            document.getElementById("wallet").style.display = "none";
+            document.getElementById("inventory").style.display = "none";
+            document.getElementById("new_profile").style.display = "block";
+            document.getElementById("profile").style.display = "none";
+          }
+        })
+      }
+    </script>
+    
+    <div id="inventory" style="
+      height: 100vh;
+      background-color: white;
+      margin-left: 160px;
+      display: none;">
+
+      <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">ZENZO Forge Inventory</h1>
+      <p style="text-align: center;font-family: helvetica;">Peers: <b id="peerCount">Offline (No peers connected)</b></p>
       <br>
       <span id="items"></span>
 
@@ -101,5 +169,153 @@
           refreshInventory();
       </script>
     </div>
+    <div id="wallet" style="height: 100vh; background-color: white; margin-left: 160px; display: block; text-align: center;">
+      <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">ZENZO Wallet</h1>
+      <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Available: <b id="available_znz">0</b><br>Total: <b id="total_znz">0</b><br>Locked: <b id="locked_znz">0</b></h2><br>
+      
+      <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Receive ZNZ</h2><p>Your receive address</p>
+      <input id="receive_address" readonly="readonly" type="text" value="" style="text-align: center; width: 315px; border-style: none; background-color: #8678dc4a; border-radius: 1000px;"><br>
+
+      <br><h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Send ZNZ</h2>
+      <input id="send_to" oninput="checkForProfile()" type="text" placeholder="ZNZ Address or Name">
+      <input id="send_amount" type="number" placeholder="Amount (ZNZ)">
+      <button onclick="sendGuiTX()">Send</button>
+      <br>
+      <p id="sending_to_parent" style="color:black; opacity: 0.5; display:none">(Sending to <b id="sending_to">???</b>)</p>
+
+      <script>
+        function fetchBalances() {
+          document.getElementById("receive_address").value = addy;
+          zenzo.call("getwalletinfo").then(RPCbalances => {
+            document.getElementById("total_znz").innerHTML = RPCbalances.balance.toFixed(2);
+            let lockedBalance = 0;
+            for (let i=0; i<items.length; i++) {
+                if (items[i].address === addy) lockedBalance += items[i].value;
+            }
+            for (let i=0; i<itemsToValidate.length; i++) {
+                if (itemsToValidate[i].address === addy) lockedBalance += itemsToValidate[i].value;
+            }
+            document.getElementById("available_znz").innerHTML = (RPCbalances.balance - lockedBalance).toFixed(2);
+            document.getElementById("locked_znz").innerHTML = lockedBalance;
+          });
+        }
+
+        function sendGuiTX() {
+          const amt = Number(document.getElementById("send_amount").value);
+          const to = document.getElementById("send_to").value;
+
+          let toAddress;
+          let toUsername;
+
+          let isUsername = false;
+          if (to.length !== 34) {
+            let toUser = getProfile(to, true);
+            if (toUser !== null) {
+              toAddress = toUser.address;
+              toUsername = toUser.name.replace("zenzo.", "");
+              isUsername = true;
+            } else {
+              // No address, no username; error out
+            }
+          } else {
+            toAddress = to;
+          }
+
+          zenzo.call("sendtoaddress", toAddress, amt).then(guiTx => {
+            console.info("GUI: Transaction sent! " + guiTx);
+            fetchBalances();
+          }).catch(console.error);
+        }
+
+        function checkForProfile () {
+          console.info("Checking for profile...");
+          const to = document.getElementById("send_to").value;
+
+          let toAddress;
+          let toUsername;
+
+          let isUsername = false;
+          if (to.length !== 34) {
+            let toUser = getProfile(to, true);
+            if (toUser !== null) {
+              toAddress = toUser.address;
+              toUsername = toUser.name.replace("zenzo.", "");
+              isUsername = true;
+              document.getElementById("sending_to").innerHTML = toAddress;
+              document.getElementById("sending_to_parent").style.display = "block";
+              console.info("Found username: " + toUsername);
+            } else {
+              document.getElementById("sending_to").innerHTML = "invalid Address or Username";
+              document.getElementById("sending_to_parent").style.display = "block";
+              console.info("Couldn't find user or address");
+            }
+          } else {
+            let toUser = getProfile(to, true);
+            if (toUser !== null) {
+              toAddress = toUser.address;
+              toUsername = toUser.name.replace("zenzo.", "");
+              isUsername = true;
+              document.getElementById("sending_to").innerHTML = toUsername;
+              document.getElementById("sending_to_parent").style.display = "block";
+              console.info("Found username: " + toUsername);
+            } else {
+              document.getElementById("sending_to").innerHTML = to;
+              document.getElementById("sending_to_parent").style.display = "block";
+              console.info("Regular address");
+            }
+          }
+        }
+
+        setInterval(fetchBalances, 1000);
+      </script>
+    </div>
+    <div id="new_profile" style="height: 100vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
+      <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Create a ZENZO Profile</h1>
+      <h3 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">What is a ZENZO Profile?</h3>
+      <p>A ZENZO Profile is a decentralized ZFI (ZENZO Forge Item) that allocates a custom, human-readable username to a ZENZO address.<br>This allows you to have a completely trustless and immutable player profile, directly on the ZENZO Forge network.</p>
+      
+      <input id="new_username" type="text" placeholder="Zentoshi Zakamoto" style="text-align: center; width: 250px;"><br>
+      <button onclick="createUsername()">Create Profile</button>
+
+      <script>
+        let user_profile = null;
+
+        async function createUsername() {
+          const newUsername = document.getElementById("new_username").value;
+          let isUsernameFree = getProfile(newUsername, true);
+          if (isUsernameFree === null) {
+            try {
+              let createdUser = await superagent
+                .post("http://127.0.0.1:80/forge/create")
+                .send({name: "zenzo." + newUsername, amount: 10, auth: authToken});
+              user_profile = createdUser.body;
+              loadProfile();
+              openProfile();
+            } catch (e) {
+              console.error("Profile creation error: " + e);
+            }
+          } else {
+            console.warn("Profile creation rejected, username already taken");
+          }
+        }
+      </script>
+    </div>
+    <div id="profile" style="height: 100vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
+      <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">ZENZO Profile</h1>
+      <h3 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome, <b id="welcome_username"></b></h3>
+
+      <script>
+        async function loadProfile () {
+          let userTmp = getProfile(addy, true);
+          if (userTmp !== null) {
+            user_profile = userTmp;
+            document.getElementById("welcome_username").innerHTML = user_profile.name.replace("zenzo.", "");
+            return true;
+          } else {
+            return false;
+          }
+        }
+      </script>
+    </div>
   </body>
-</html>
+</html> 
