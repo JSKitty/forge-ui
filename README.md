@@ -8,7 +8,7 @@
 
 1. Download the ZENZO Forge binaries:
 
-- Windows: https://mega.nz/#!AXQxkSqK!dSYE4LDgaNvIfkhZhnq0vzvt4pD82OfexPLG1elMxf4
+- Windows: https://mega.nz/#!gTJjwSLL!YueD6gBc0nkmCHzI8EwnZ0DKtbqwNGZzYu6gTz-wTSc
 
 2. Open `%appdata%/Zenzo/zenzo.conf` in a text editor, copy/paste the below config:
 
@@ -33,8 +33,7 @@ server=1
         "pass": "pass",
         "port": 26211,
         "address": "Z..........."
-    },
-    "blockbook": "https://blockbook.zenzo.io/"
+    }
 }
 ```
 
