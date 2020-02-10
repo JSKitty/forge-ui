@@ -8,7 +8,7 @@
 
 1. Download the ZENZO Forge binaries:
 
-- Windows: https://mega.nz/#!gTJjwSLL!YueD6gBc0nkmCHzI8EwnZ0DKtbqwNGZzYu6gTz-wTSc
+- Windows: https://mega.nz/#!ZHhAVAJR!4b5jlr-ISyONw8jzxpTzHagmJyjHULzDj0U2wvPsEn0
 
 2. Open `%appdata%/Zenzo/zenzo.conf` in a text editor, copy/paste the below config:
 
