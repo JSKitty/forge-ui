@@ -348,7 +348,7 @@ function getAllProfiles(includePending = false) {
 function getProfile(name, includePending = false) {
     let profiles = getAllProfiles(includePending);
     for (let i=0; i<profiles.length; i++) {
-        if (profiles[i].name === "zenzo." + name || profiles[i].address === name) {
+        if (profiles[i].name.toLowerCase() === "zenzo." + name.toLowerCase() || profiles[i].address === name) {
             return profiles[i];
         }
     }
