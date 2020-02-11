@@ -196,6 +196,8 @@ async function validateItemBatch (res, nItems, reply) {
         if (nItem.value < 0.01) return console.warn("Forge: Received invalid item, value is below minimum.");
         if (nItem.hash.length !== 64) return console.warn("Forge: Received invalid item, hash length is not 64.");
 
+        if (debug("validations")) console.info("Validating item: '" + nItem.name + "' from " + nItem.address);
+
         // Check if the item was previously smelted
         if (wasItemSmelted(nItem.hash)) {
             if (debug("validations")) console.error("Rejected item (" + nItem.name + ") from peer, item has been smelted");
