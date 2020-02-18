@@ -42,6 +42,9 @@ let items = [];
 // The list of "pending" items, of which require further validations
 let itemsToValidate = [];
 
+// The list of "unsigned" items, of which require the receiver's signature
+let unsignedItems = [];
+
 // The list of smelted item hashes, this can be checked to ensure that a peer doesn't send us a smelted item, thus accidently accepting it due to being valid
 let itemsSmelted = [];
 
@@ -84,8 +87,9 @@ async function asyncForEach(array, callback) {
 }
 
 // Validates if an item is genuine
-async function isItemValid (nItem, approve = false) {
+async function isItemValid (nItem, isUnsigned, approve = false) {
     try {
+        if (debug("validations")) console.info("Validating item: '" + nItem.name + "' from " + nItem.address);
         if (wasItemSmelted(nItem.hash)) {
             eraseItem(nItem.hash);
             if (debug("validations")) console.error("Forge: Item '" + nItem.name + "' was previously smelted.");
@@ -103,9 +107,13 @@ async function isItemValid (nItem, approve = false) {
                 if (rawTx.vout[i].scriptPubKey.addresses.includes(nItem.address)) {
                     if (debug("validations")) console.log("Found pubkey of item...");
                     let isSigGenuine = await zenzo.call("verifymessage", nItem.address, nItem.sig, nItem.tx);
-                    if (isSigGenuine) {
-                        if (debug("validations")) console.info("Sig is genuine...");
-                        if (hash(nItem.tx + nItem.sig + nItem.address + nItem.name + nItem.value) === nItem.hash) {
+                    if (isSigGenuine || !isSigGenuine && isUnsigned) {
+                        if (debug("validations") && !isUnsigned) console.info("Sig is genuine...");
+                        if (debug("validations") && isUnsigned) console.info("Item is unsigned but valid...");
+                        if (!isUnsigned && hash(nItem.tx + nItem.sig + nItem.address + nItem.name + nItem.value) === nItem.hash // Old item format - Fully validated and signed
+                            || isUnsigned && hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.address + nItem.name + nItem.value) === nItem.hash // New item format - Fully validated but unsigned
+                            || !isUnsigned && hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.sig + nItem.address + nItem.name + nItem.value) === nItem.hash) { // New item format - Fully validated and signed
+
                             if (debug("validations")) console.info("Hash is genuine...");
                             let res = await zenzo.call("gettxout", nItem.tx, 0);
                             let resSecondary = await zenzo.call("gettxout", nItem.tx, 1);
@@ -171,7 +179,7 @@ async function isItemValid (nItem, approve = false) {
 async function validateItems (revalidate = false) {
     let validated = 0;
     await asyncForEach(((revalidate) ? items : itemsToValidate), async (item) => {
-        let res = await isItemValid(item, true);
+        let res = await isItemValid(item, false, true);
         if (res) {
             validated++;
         } else {
@@ -186,17 +194,15 @@ async function validateItems (revalidate = false) {
     return validated;
 }
 
-async function validateItemBatch (res, nItems, reply) {
+async function validateItemBatch (res, nItems, reply, isUnsigned) {
     await asyncForEach(nItems, async (nItem) => {
         // Check all values are valid
         if (nItem.tx.length !== 64) return console.warn("Forge: Received invalid item, TX length is not 64.");
-        if (nItem.sig.length < 1) return console.warn("Forge: Received invalid signature, length is below 1.");
+        if (nItem.sig.length < 1 && !isUnsigned) return console.warn("Forge: Received invalid signature, length is below 1.");
         if (nItem.address.length !== 34) return console.warn("Forge: Received invalid address, length is not 34.");
         if (nItem.name.length < 1) return console.warn("Forge: Received invalid name, length is below 1.");
         if (nItem.value < 0.01) return console.warn("Forge: Received invalid item, value is below minimum.");
         if (nItem.hash.length !== 64) return console.warn("Forge: Received invalid item, hash length is not 64.");
-
-        if (debug("validations")) console.info("Validating item: '" + nItem.name + "' from " + nItem.address);
 
         // Check if the item was previously smelted
         if (wasItemSmelted(nItem.hash)) {
@@ -206,15 +212,15 @@ async function validateItemBatch (res, nItems, reply) {
         }
 
         // Check if the item's contents are genuine
-        let valid = await isItemValid(nItem, true);
+        let valid = await isItemValid(nItem, isUnsigned, true);
         if (!valid) {
             if (debug("validations")) console.error("Forge: Received item is not genuine, ignored.");
             return;
         }
-        if (getItem(nItem.hash, true) === null) {
-            console.info("New item received from peer! (" + nItem.name + ") We have " + items.length + " items.");
+        //if (getItem(nItem.hash, true, true) === null) {
+            //console.info("New item received from peer! (" + nItem.name + ") We have " + items.length + " items.");
             if (reply) res.send("Thanks!");
-        }
+        //}
     });
     return true;
 }
@@ -230,7 +236,20 @@ function approveItem(item) {
             console.info("An item has been approved!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as a verified item.");
         }
     }
-    // If the item isn't already in the validation list and isn't already approved, add it as a new approved item
+    for (let i=0; i<unsignedItems.length; i++) {
+        if (item.tx === unsignedItems[i].tx) {
+            if (item.sig && !item.signedByReceiver) {
+                if (item.sig.length > 0) {
+                    item.signedByReceiver = true;
+                    eraseItem(item, true);
+                    console.info("An unsigned item has been signed by it's owner!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as a verified item.");
+                    items.push(item);
+                }
+            }
+            wasFound = true;
+        }
+    }
+    // If the item isn't already in the validation list and isn't already approved, add it as a new approved item. Or if unsigned, add to the unsigned list
     if (!wasFound) {
         wasFound = false;
         for (let i=0; i<items.length; i++) {
@@ -238,9 +257,12 @@ function approveItem(item) {
                 wasFound = true;
             }
         }
-        if (!wasFound) {
+        if (!wasFound && item.sig !== null) {
             items.push(item);
             console.info("An item has been added and approved!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as a verified item.");
+        } else if (!item.signedByReceiver && !item.sig) {
+            console.info("An unsigned item has been added to the unsigned list!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as an unsigned item.");
+            unsignedItems.push(item);
         }
     }
 }
@@ -257,7 +279,7 @@ function disproveItem(item) {
 }
 
 // Erase an item from all DB lists (minus smelt list)
-function eraseItem(item) {
+function eraseItem(item, includeUnsigned = false) {
     for (let i=0; i<items.length; i++) {
         if (item === items[i].hash || item === items[i].tx) {
             items.splice(i, 1);
@@ -266,6 +288,14 @@ function eraseItem(item) {
     for (let i=0; i<itemsToValidate.length; i++) {
         if (item === itemsToValidate[i].hash || item === itemsToValidate[i].tx) {
             itemsToValidate.splice(i, 1);
+        }
+    }
+
+    if (includeUnsigned) {
+        for (let i=0; i<unsignedItems.length; i++) {
+            if (item === unsignedItems[i].hash || item === unsignedItems[i].tx) {
+                unsignedItems.splice(i, 1);
+            }
         }
     }
 }
@@ -312,7 +342,7 @@ function cleanItems (itemList) {
 }
 
 // Get an item object from our list by it's hash
-function getItem(itemArg, includePending = false) {
+function getItem(itemArg, includePending = false, includeUnsigned = false) {
     for (let i=0; i<items.length; i++) {
         if (items[i].hash === itemArg || items[i].tx === itemArg) return items[i];
     }
@@ -325,7 +355,32 @@ function getItem(itemArg, includePending = false) {
         }
     }
 
+    // (includeUnsigned only)
+    // Search for the item in the unsigned Items DB
+    if (includeUnsigned) {
+        for (let i=0; i<unsignedItems.length; i++) {
+            if (unsignedItems[i].hash === itemArg || unsignedItems[i].tx === itemArg) return unsignedItems[i];
+        }
+    }
+
     return null;
+}
+
+// Updates the contents of an item object
+function updateItem (itemArg) {
+    for (let i=0; i<items.length; i++) {
+        if (items[i].hash === itemArg.hash || items[i].tx === itemArg.tx) {
+            items[i] = JSON.parse(JSON.stringify(itemArg));
+            return true;
+        }
+    }
+    for (let i=0; i<itemsToValidate.length; i++) {
+        if (itemsToValidate[i].hash === itemArg.hash || itemsToValidate[i].tx === itemArg.tx) {
+            itemsToValidate[i] = JSON.parse(JSON.stringify(itemArg));
+            return true;
+        }
+    }
+    return false;
 }
 
 // Gets an array of all profiles on the network
@@ -443,10 +498,10 @@ class Peer {
             });
     }
 
-    sendItems(itemz) {
+    sendItems() {
         return superagent
             .post(this.host + "/forge/receive")
-            .send(cleanItems(itemz))
+            .send({items: cleanItems(items), pendingItems: cleanItems(itemsToValidate), unsignedItems: cleanItems(unsignedItems)})
             .then((res) => {
                 this.lastPing = Date.now();
                 this.setStale(false);
@@ -470,9 +525,9 @@ class Peer {
                 this.setStale(false);
                 let data = JSON.parse(res.text);
                 console.info(`Peer "${this.host}" (${this.index}) sent items (${data.items.length} Items, ${data.pendingItems.length} Pending Items)`);
-                validateItemBatch(null, cleanItems(data.items.concat(data.pendingItems)), false).then(done => {
+                validateItemBatch(null, cleanItems(data.items.concat(data.pendingItems).concat(data.unsignedItems)), false).then(done => {
                     if (done) {
-                        console.info(`Synced with peer "${this.host}", we now have ${items.length} valid & ${itemsToValidate.length} pending items!`);
+                        console.info(`Synced with peer "${this.host}", we now have ${items.length} valid, ${itemsToValidate.length} pending items & ${unsignedItems.length} unsigned items!`);
                     } else console.warn(`Failed to sync with peer "${this.host}"`);
                 });
             })
@@ -527,7 +582,7 @@ app.post('/forge/receive', (req, res) => {
 
     let nItems = req.body;
 
-    validateItemBatch(res, nItems, true).then(ress => {
+    validateItemBatch(res, cleanItems(nItems.items.concat(nItems.pendingItems).concat(nItems.unsignedItems)), true).then(ress => {
         if (debug("validations")) console.log('Forge: Validated item batch from "' + ip + '"');
     });
 });
@@ -544,7 +599,7 @@ app.post('/forge/sync', (req, res) => {
             req.peer.getItems();
     }
 
-    let obj = {items: items, pendingItems: itemsToValidate};
+    let obj = {items: items, pendingItems: itemsToValidate, unsignedItems: unsignedItems};
     res.send(JSON.stringify(obj));
 });
 
@@ -648,6 +703,81 @@ app.post('/forge/create', (req, res) => {
     });
 });
 
+// Forge Transfer
+// The endpoint for transferring items to other addresses or profiles
+app.post('/forge/transfer', (req, res) => {
+    if (peers.length === 0 || safeMode) return res.json({error: "Transfers are unavailable while the Forge is in Safe Mode and/or Offline."});
+    let ip = cleanIP(req.ip);
+    if (!isAuthed(req)) return console.warn("Forge: A non-authorized Forge was made by '" + ip + "', ignoring.");
+
+    // Check we have all needed parameters
+    if (req.body.item.length !== 64) return console.warn("Forge: Invalid item parameter.");
+    if (req.body.to.length !== 34) return console.warn("Forge: Invalid to parameter.");
+
+    // Get the item
+    let tItem = getItem(req.body.item);
+
+    findMatchingVouts(tItem).then(vouts => {
+        // Create a transaction
+        //zenzo.call("gettxout", tItem.tx, tItem.vout).then(rawPrevTx => {
+            // Sign the transaction hash
+            let receiverJson = "{\"" + req.body.to + "\":" + (tItem.value - 0.001).toFixed(4) + "}"
+            let VoutJson = "[{\"txid\":\"" + tItem.tx + "\",\"vout\":" + vouts[0] + "}]"
+            zenzo.call("createrawtransaction", JSON.parse(VoutJson), JSON.parse(receiverJson)).then(rawTx => {
+                zenzo.call("signrawtransaction", rawTx).then(signedTx => {
+                    zenzo.call("sendrawtransaction", signedTx.hex).then(txid => {
+                        //zenzo.call("signmessage", addy, txid).then(sig => {
+                            let nItem = {
+                                tx: txid,
+                                prev: [
+                                    {
+                                        tx: tItem.tx,
+                                        vout: vouts[0],
+                                        address: addy,
+                                        spend_timestamp: Date.now(),
+                                        transfer_fee: 0.001
+                                    }
+                                ],
+                                //sig: sig,
+                                signedByReceiver: false,
+                                address: req.body.to,
+                                name: tItem.name,
+                                value: tItem.value - 0.001
+                            }
+                            nItem.hash = hash(nItem.tx + JSON.stringify(nItem.prev) + /*nItem.sig +*/ nItem.address + nItem.name + nItem.value);
+                            console.log("Forge: Item Transferred!\n- TX: " + nItem.tx + /*"\n- Signature: " + nItem.sig +*/ "\n- Name: " + nItem.name + "\n- Value: " + nItem.value + " ZNZ\n- Hash: " + nItem.hash + "\n- Status: Awaiting item signature from receiver");
+                            unsignedItems.push(nItem);
+                            eraseItem(tItem);
+                            zenzo.call("gettransaction", txid).then(rawtx => {
+                                res.json(nItem);
+                            }).catch(function(){
+                                console.error("--- TRANSFER FAILURE ---\n- ZENZO-RPC 'gettransaction " + txid + "' failed");
+                                res.json({error: "Craft failure: ZENZO-RPC hangup"});
+                            });
+                        //}).catch(function(e){
+                        //    console.error("--- TRANSFER FAILURE ---\n- ZENZO-RPC 'signmessage " + addy + " " + txid + "' failed (" + e + ", " + JSON.stringify(e) + ")");
+                        //    res.json({error: "Craft failure: ZENZO-RPC hangup"});
+                        //});
+                    }).catch(function(){
+                        console.error("--- TRANSFER FAILURE ---\n- ZENZO-RPC 'sendrawtransaction " + signedTx.hex + "' failed");
+                        res.json({error: "Craft failure: ZENZO-RPC hangup"});
+                    });
+                }).catch(function(){
+                    console.error("--- TRANSFER FAILURE ---\n- ZENZO-RPC 'signrawtransaction " + rawTx + "' failed");
+                    res.json({error: "Craft failure: ZENZO-RPC hangup"});
+                });
+            }).catch(function(){
+                console.error("--- TRANSFER FAILURE ---\n- ZENZO-RPC 'createrawtransaction " + JSON.stringify([{"txid":tItem.tx,"vout":tItem.vout}]) + " " + receiverJson + "' failed");
+                console.error(tItem.vout);
+                res.json({error: "Craft failure: ZENZO-RPC hangup"});
+            });
+        //}).catch(function(){
+        //    console.error("--- TRANSFER FAILURE ---\n- ZENZO-RPC 'gettxout " + tItem.tx + " " + tItem.vout + "' failed");
+        //    res.json({error: "Craft failure: ZENZO-RPC hangup"});
+        //});
+    });
+});
+
 // Forge Smelt
 // The endpoint for smelting (destroying) items and converting them back into their native ZNZ value.
 app.post('/forge/smelt', (req, res) => {
@@ -675,7 +805,7 @@ app.post('/forge/smelt', (req, res) => {
 // Forge Items
 // The endpoint for getting a list of validated and pending items
 app.post('/forge/items', (req, res) => {
-    let obj = {items: items, pendingItems: itemsToValidate};
+    let obj = {items: items, pendingItems: itemsToValidate, unsignedItems: unsignedItems};
     res.json(obj);
 });
 
@@ -848,6 +978,21 @@ async function lockCollateralUTXOs() {
     return true;
 }
 
+async function findMatchingVouts(item) {
+    // List of unspent vouts to search for
+    let vouts = [0,1,2,3,4,5,6,7,8,9];
+    let matchingVouts = [];
+    await asyncForEach(vouts, async (vout) => {
+        let nTx = await zenzo.call("gettxout", item.tx, vout);
+        if (nTx !== null) {
+            console.info("nTx: " + nTx);
+            console.info("item: " + item);
+            if (nTx.value === item.value && nTx.scriptPubKey.addresses[0] === item.address) matchingVouts.push(vout);
+        }
+    });
+    return matchingVouts;
+}
+
 /* Core Node Mechanics */
 
 // Load all relevent data from disk (if it already exists)
@@ -877,7 +1022,14 @@ if (!fs.existsSync(appdata + 'data/')) {
                 else
                     itemsToValidate = nDiskPendingItems;
 
-                console.info("Init: loaded from disk:\n- Items: " + items.length + "\n- Pending Items: " + itemsToValidate.length + "\n- Smelted Items: " + itemsSmelted.length);
+                fromDisk("unsigned_items.json", true).then(nDiskUnsignedItems => {
+                    if (nDiskUnsignedItems === null)
+                        console.warn("Init: file 'unsigned_items.json' missing from disk, ignoring...");
+                    else
+                        unsignedItems = nDiskUnsignedItems;
+        
+                    console.info("Init: loaded from disk:\n- Items: " + items.length + "\n- Pending Items: " + itemsToValidate.length + "\n- Smelted Items: " + itemsSmelted.length + "\n- Unsigned Items: " + unsignedItems.length);
+                });
             });
         });
     });
@@ -892,17 +1044,34 @@ let janitor = setInterval(function() {
     peers.forEach(peer => {
         peer.ping();
         peer.getItems(); // Temp, will be optimized later
+        peer.sendItems();
     });
+
+    // Sign unsigned items that belong to us
+    if (unsignedItems.length > 0) {
+        unsignedItems.forEach(unsignedItem => {
+            if (unsignedItem.address === addy) {
+                if (debug("validations")) console.info("Signing received unsigned item (" + unsignedItem.name + ")...")
+                zenzo.call("signmessage", addy, unsignedItem.tx).then(sig => {
+                    if (sig) {
+                        unsignedItem.sig = sig;
+                        eraseItem(unsignedItem, true);
+                        items.push(unsignedItem);
+                        if (debug("validations")) console.error(" - Item signed successfully!");
+                    } else {
+                        if (debug("validations")) console.error(" - Signing failed...");
+                    }
+                });
+            }
+        });
+    }
 
     // Validate pending items
     if (itemsToValidate.length > 0) {
         validateItems().then(validated => {
             if (debug("validations")) console.log("Validated " + validated + " item(s).")
             if (itemsToValidate.length === validated) {
-                peers.forEach(peer => {
-                    peer.sendItems(itemsToValidate);
-                    itemsToValidate = [];
-                });
+                itemsToValidate = [];
             }
         });
     }
@@ -911,11 +1080,6 @@ let janitor = setInterval(function() {
     if (items.length > 0) {
         validateItems(true).then(validated => {
             if (debug("validations")) console.log("Revalidated " + validated + " item(s).")
-            if (items.length === validated) {
-                peers.forEach(peer => {
-                    peer.sendItems(items); // Temp, will be optimized later
-                });
-            }
         });
     }
 
@@ -926,10 +1090,13 @@ let janitor = setInterval(function() {
             console.log('Database: Written ' + itemsToValidate.length + ' pending items to disk.');
             toDisk("smelted_items.json", itemsSmelted, true).then(res => {
                 console.log('Database: Written ' + itemsSmelted.length + ' smelted items to disk.');
+                toDisk("unsigned_items.json", unsignedItems, true).then(res => {
+                    console.log('Database: Written ' + unsignedItems.length + ' unsigned items to disk.');
+                });
             });
         });
     });
-}, 15000);
+}, 5000);
 
 // Setup the wallet variables
 let addy = "";
