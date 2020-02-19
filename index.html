@@ -104,6 +104,8 @@
       <!-- FORGE LIBRARY GOES ABOVE -->
 
       <script>
+          let hasValidReceiver = false;
+          let currentValidReceiver = "";
           function craftItem() {
             if (peers.length === 0) return;
             let nName = document.getElementById("new_item_name").value;
@@ -129,8 +131,18 @@
             });
           }
 
+          function transferForgeItem (item) {
+              superagent
+              .post('http://127.0.0.1:80/forge/transfer')
+              .send({ item: item, to: currentValidReceiver, auth: authToken})
+              .end((err, res) => {
+                console.info(res);
+                refreshInventory();
+              });
+          }
+
           async function getForgeInventory (addr) {
-              let inv = {items: [], pendingItems: []};
+              let inv = {items: [], pendingItems: [], unsignedItems: []};
               let res = await superagent.post('http://127.0.0.1:80/forge/items');
               res = JSON.parse(res.text);
               for (let i=0; i<res.items.length; i++) {
@@ -139,6 +151,9 @@
               for (let i=0; i<res.pendingItems.length; i++) {
                 if (res.pendingItems[i].address === addr) inv.pendingItems.push(res.pendingItems[i]);
               }
+              for (let i=0; i<res.pendingItems.length; i++) {
+                if (res.unsignedItems[i].address === addr) inv.unsignedItems.push(res.unsignedItems[i]);
+              }
               return inv;
           }
 
@@ -146,10 +161,20 @@
             getForgeInventory(addy).then(inv => {
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + inv.items[i].name + '<br><b>Value: </b>' + inv.items[i].value + '<br><button onclick="smeltForgeItem(\'' + inv.items[i].hash + '\')">Smelt</button></div>';
+                inv.items[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + inv.items[i].name + '<br><b>Value: </b>' + inv.items[i].value + '<br><button onclick="smeltForgeItem(\'' + inv.items[i].hash + '\')">Smelt</button>' + ((hasValidReceiver) ? '<button onclick="transferForgeItem(\'' + inv.items[i].hash + '\')">Transfer</button>' : '') + '</div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
-                itemHTML += '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;opacity: 0.5;">' + "<b>Name:<b/> " + inv.pendingItems[i].name + '<br><b>Value: </b>' + inv.pendingItems[i].value + '</div>';
+                inv.pendingItems[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;opacity: 0.5;">' + "<b>Name:<b/> " + inv.pendingItems[i].name + '<br><b>Value: </b>' + inv.pendingItems[i].value + '</div>';
+              }
+              for (let i=0; i<inv.unsignedItems.length; i++) {
+                inv.unsignedItems[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;opacity: 0.5;">' + "<b>Name:<b/> " + inv.unsignedItems[i].name + '<br><b>Value: </b>' + inv.unsignedItems[i].value + '</div>';
+              }
+
+              let sortedItems = inv.items.concat(inv.pendingItems, inv.unsignedItems);
+              sortedItems.sort(function(a, b){return b.value-a.value});
+
+              for (let i=0; i<sortedItems.length; i++) {
+                itemHTML += sortedItems[i].html;
               }
               document.getElementById("items").innerHTML = itemHTML;
             });
@@ -195,6 +220,7 @@
             for (let i=0; i<itemsToValidate.length; i++) {
                 if (itemsToValidate[i].address === addy) lockedBalance += itemsToValidate[i].value;
             }
+            lockedBalance = formatNum(lockedBalance);
             document.getElementById("available_znz").innerHTML = (RPCbalances.balance - lockedBalance).toFixed(2);
             document.getElementById("locked_znz").innerHTML = lockedBalance;
           });
@@ -243,10 +269,12 @@
               isUsername = true;
               document.getElementById("sending_to").innerHTML = toAddress;
               document.getElementById("sending_to_parent").style.display = "block";
+              hasValidReceiver = true;
               console.info("Found username: " + toUsername);
             } else {
               document.getElementById("sending_to").innerHTML = "invalid Address or Username";
               document.getElementById("sending_to_parent").style.display = "block";
+              hasValidReceiver = false;
               console.info("Couldn't find user or address");
             }
           } else {
@@ -257,13 +285,16 @@
               isUsername = true;
               document.getElementById("sending_to").innerHTML = toUsername;
               document.getElementById("sending_to_parent").style.display = "block";
+              hasValidReceiver = true;
               console.info("Found username: " + toUsername);
             } else {
               document.getElementById("sending_to").innerHTML = to;
               document.getElementById("sending_to_parent").style.display = "block";
+              hasValidReceiver = true;
               console.info("Regular address");
             }
           }
+          currentValidReceiver = toAddress;
         }
 
         setInterval(fetchBalances, 1000);

@@ -90,8 +90,8 @@ async function asyncForEach(array, callback) {
 async function isItemValid (nItem, isUnsigned, approve = false) {
     try {
         if (debug("validations")) console.info("Validating item: '" + nItem.name + "' from " + nItem.address);
-        if (wasItemSmelted(nItem.hash)) {
-            eraseItem(nItem.hash);
+        if (wasItemSmelted(nItem.tx)) {
+            eraseItem(nItem.tx);
             if (debug("validations")) console.error("Forge: Item '" + nItem.name + "' was previously smelted.");
             return false;
         }
@@ -106,19 +106,25 @@ async function isItemValid (nItem, isUnsigned, approve = false) {
             if (rawTx.vout[i].value === nItem.value) {
                 if (rawTx.vout[i].scriptPubKey.addresses.includes(nItem.address)) {
                     if (debug("validations")) console.log("Found pubkey of item...");
-                    let isSigGenuine = "";
+                    let isSigGenuine = false;
                     if (nItem.sig)
                         isSigGenuine = await zenzo.call("verifymessage", nItem.address, nItem.sig, nItem.tx);
                     if (isSigGenuine || !isSigGenuine && isUnsigned) {
                         if (debug("validations") && !isUnsigned) console.info("Sig is genuine...");
                         if (debug("validations") && isUnsigned) console.info("Item is unsigned but valid...");
                         let itemHash = "";
-                        if (!isUnsigned)
+                        if (!isUnsigned && !nItem.prev) {
                             itemHash = hash(nItem.tx + nItem.sig + nItem.address + nItem.name + nItem.value); // Old, signed format
-                        if (isUnsigned)
+                            if (debug("validations")) console.log("Old signed: " + itemHash);
+                        }
+                        if (isUnsigned && nItem.prev) {
                             itemHash = hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.address + nItem.name + nItem.value); // New, unsigned format
-                        if (!isUnsigned && itemHash === "")
-                            hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.sig + nItem.address + nItem.name + nItem.value) // New, signed format
+                            if (debug("validations")) console.log("New unsigned: " + itemHash);
+                        }
+                        if (!isUnsigned && itemHash === "") {
+                            itemHash = hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.sig + nItem.address + nItem.name + nItem.value) // New, signed format
+                            if (debug("validations")) console.log("New signed: " + itemHash);
+                        }
                         if (itemHash === nItem.hash) {
                             if (debug("validations")) console.info("Hash is genuine...");
                             let res = await zenzo.call("gettxout", nItem.tx, 0);
@@ -130,7 +136,7 @@ async function isItemValid (nItem, isUnsigned, approve = false) {
                                 if (resSecondary === null) {
                                     if (debug("validations")) console.warn("UTXO couldn't be found, item '" + nItem.name + "' has no UTXO");
                                     disproveItem(nItem);
-                                    addInvalidationScore(nItem, 5);
+                                    addInvalidationScore(nItem, 25);
                                     return false; // UTXO has been spent
                                 }
                             } else if (resSecondary === null) {
@@ -152,7 +158,7 @@ async function isItemValid (nItem, isUnsigned, approve = false) {
                             } else {
                                 if (debug("validations")) console.warn("Item value (" + nItem.value + ") doesn't match it's TX collateral value (" + ((res !== null) ? res : resSecondary).value + ")");
                                 disproveItem(nItem);
-                                addInvalidationScore(nItem, 12.5);
+                                addInvalidationScore(nItem, 25);
                                 return false;
                             }
 
@@ -161,15 +167,15 @@ async function isItemValid (nItem, isUnsigned, approve = false) {
                             addInvalidationScore(nItem, 5);
                             return false; // Couldn't find unspent collateral UTXO
                         } else {
-                            if (debug("validations")) console.warn("Hash is not genuine...");
+                            if (debug("validations")) console.warn("Hash is not genuine..." + JSON.stringify(nItem));
                             disproveItem(nItem);
-                            addInvalidationScore(nItem, 12.5);
+                            addInvalidationScore(nItem, 25);
                             return false;
                         }
                     } else {
-                        if (debug("validations")) console.warn("Sig is not genuine...");
+                        if (debug("validations")) console.warn("Sig is not genuine..." + JSON.stringify(nItem));
                         disproveItem(nItem);
-                        addInvalidationScore(nItem, 12.5);
+                        addInvalidationScore(nItem, 25);
                         return false;
                     }
                 }
@@ -185,7 +191,12 @@ async function isItemValid (nItem, isUnsigned, approve = false) {
 async function validateItems (revalidate = false) {
     let validated = 0;
     await asyncForEach(((revalidate) ? items : itemsToValidate), async (item) => {
-        let res = await isItemValid(item, false, true);
+        let isUnsigned = true;
+        if (item.sig) {
+            if (item.sig.length > 1) isUnsigned = false;
+        }
+        item.value = formatNum(item.value);
+        let res = await isItemValid(item, isUnsigned, true);
         if (res) {
             validated++;
         } else {
@@ -200,20 +211,26 @@ async function validateItems (revalidate = false) {
     return validated;
 }
 
-async function validateItemBatch (res, nItems, reply, isUnsigned) {
+async function validateItemBatch (res, nItems, reply) {
     await asyncForEach(nItems, async (nItem) => {
         // Check all values are valid
+        let isUnsigned = true;
         if (nItem.tx.length !== 64) return console.warn("Forge: Received invalid item, TX length is not 64.");
-        if (nItem.sig.length < 1 && !isUnsigned) return console.warn("Forge: Received invalid signature, length is below 1.");
+        if (nItem.sig) isUnsigned = false;
         if (nItem.address.length !== 34) return console.warn("Forge: Received invalid address, length is not 34.");
         if (nItem.name.length < 1) return console.warn("Forge: Received invalid name, length is below 1.");
         if (nItem.value < 0.01) return console.warn("Forge: Received invalid item, value is below minimum.");
         if (nItem.hash.length !== 64) return console.warn("Forge: Received invalid item, hash length is not 64.");
 
+        nItem.value = formatNum(nItem.value);
+
         // Check if the item was previously smelted
         if (wasItemSmelted(nItem.hash)) {
             if (debug("validations")) console.error("Rejected item (" + nItem.name + ") from peer, item has been smelted");
-            if (reply) res.send("Invalid item (" + nItem.name + "), marked as smelted.");
+            if (reply && !res.sentReply) {
+                res.send("Invalid item (" + nItem.name + "), marked as smelted.");
+                res.sentReply = true;
+            }
             return false;
         }
 
@@ -223,17 +240,17 @@ async function validateItemBatch (res, nItems, reply, isUnsigned) {
             if (debug("validations")) console.error("Forge: Received item is not genuine, ignored.");
             return;
         }
-        //if (getItem(nItem.hash, true, true) === null) {
-            //console.info("New item received from peer! (" + nItem.name + ") We have " + items.length + " items.");
-            if (reply) res.send("Thanks!");
-        //}
     });
+    if (reply && !res.sentReply) res.send("Thanks!");
     return true;
 }
 
 // Approve an item as valid, moving it to the main items DB and removing it from the pending list
 function approveItem(item) {
     let wasFound = false;
+    let itemFromItems = getItem(item.tx, false, false);
+    let itemFromPending = getItem(item.tx, true, false);
+    let itemFromUnsigned = getItem(item.tx, true, true);
     for (let i=0; i<itemsToValidate.length; i++) {
         if (item.tx === itemsToValidate[i].tx) {
             wasFound = true;
@@ -247,7 +264,7 @@ function approveItem(item) {
             if (item.sig && !item.signedByReceiver) {
                 if (item.sig.length > 0) {
                     item.signedByReceiver = true;
-                    eraseItem(item, true);
+                    unsignedItems.splice(i, 1);
                     console.info("An unsigned item has been signed by it's owner!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as a verified item.");
                     items.push(item);
                 }
@@ -266,9 +283,12 @@ function approveItem(item) {
         if (!wasFound && item.sig !== null) {
             items.push(item);
             console.info("An item has been added and approved!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as a verified item.");
-        } else if (!item.signedByReceiver && !item.sig) {
+        } else if (!item.signedByReceiver && !item.sig && itemFromUnsigned === null) {
             console.info("An unsigned item has been added to the unsigned list!\n - Item '" + item.name + "' (" + item.tx + ") has been approved and appended as an unsigned item.");
             unsignedItems.push(item);
+        } else if (itemFromUnsigned !== null && itemFromUnsigned.tx === item.tx) {
+            eraseItem(item.tx, true);
+            items.push(item);
         }
     }
 }
@@ -345,6 +365,11 @@ function cleanItems (itemList) {
         delete itemList[i].invalidScore;
     }
     return itemList;
+}
+
+// Format a number to to 6 decimal places remove any JS-buggy number changes
+function formatNum(n) {
+    return Number(n.toFixed(6));
 }
 
 // Get an item object from our list by it's hash
@@ -531,7 +556,7 @@ class Peer {
                 this.setStale(false);
                 let data = JSON.parse(res.text);
                 console.info(`Peer "${this.host}" (${this.index}) sent items (${data.items.length} Items, ${data.pendingItems.length} Pending Items)`);
-                validateItemBatch(null, cleanItems({...data.items, ...data.pendingItems, ...data.unsignedItems}), false).then(done => {
+                validateItemBatch(null, cleanItems(data.items.concat(data.pendingItems, data.unsignedItems)), false).then(done => {
                     if (done) {
                         console.info(`Synced with peer "${this.host}", we now have ${items.length} valid, ${itemsToValidate.length} pending items & ${unsignedItems.length} unsigned items!`);
                     } else console.warn(`Failed to sync with peer "${this.host}"`);
@@ -588,7 +613,7 @@ app.post('/forge/receive', (req, res) => {
 
     let nItems = req.body;
 
-    validateItemBatch(res, cleanItems({...nItems.items, ...nItems.pendingItems, ...nItems.unsignedItems}), true).then(ress => {
+    validateItemBatch(res, cleanItems(nItems.items.concat(nItems.pendingItems, nItems.unsignedItems)), true).then(ress => {
         if (debug("validations")) console.log('Forge: Validated item batch from "' + ip + '"');
     });
 });
@@ -671,7 +696,7 @@ app.post('/forge/create', (req, res) => {
     if (req.body.name.length < 1) return console.warn("Forge: Invalid name parameter.");
 
     // Cleanse the input
-    req.body.amount = Number(req.body.amount);
+    req.body.amount = formatNum(req.body.amount);
 
     // Create a transaction
     zenzo.call("sendtoaddress", addy, Number(req.body.amount.toFixed(8))).then(txid => {
@@ -748,12 +773,12 @@ app.post('/forge/transfer', (req, res) => {
                                 signedByReceiver: false,
                                 address: req.body.to,
                                 name: tItem.name,
-                                value: tItem.value - 0.001
+                                value: formatNum(tItem.value - 0.001)
                             }
                             nItem.hash = hash(nItem.tx + JSON.stringify(nItem.prev) + /*nItem.sig +*/ nItem.address + nItem.name + nItem.value);
                             console.log("Forge: Item Transferred!\n- TX: " + nItem.tx + /*"\n- Signature: " + nItem.sig +*/ "\n- Name: " + nItem.name + "\n- Value: " + nItem.value + " ZNZ\n- Hash: " + nItem.hash + "\n- Status: Awaiting item signature from receiver");
                             unsignedItems.push(nItem);
-                            eraseItem(tItem);
+                            eraseItem(tItem.tx);
                             zenzo.call("gettransaction", txid).then(rawtx => {
                                 res.json(nItem);
                             }).catch(function(){
@@ -1053,7 +1078,7 @@ let janitor = setInterval(function() {
         peer.sendItems();
     });
 
-    // Sign unsigned items that belong to us
+    // Sign unsigned items that belong to us, and remove unsigned items that have been recently signed
     if (unsignedItems.length > 0) {
         unsignedItems.forEach(unsignedItem => {
             if (unsignedItem.address === addy) {
@@ -1061,7 +1086,8 @@ let janitor = setInterval(function() {
                 zenzo.call("signmessage", addy, unsignedItem.tx).then(sig => {
                     if (sig) {
                         unsignedItem.sig = sig;
-                        eraseItem(unsignedItem, true);
+                        unsignedItem.hash = hash(unsignedItem.tx + JSON.stringify(unsignedItem.prev) + unsignedItem.sig + unsignedItem.address + unsignedItem.name + unsignedItem.value);
+                        eraseItem(unsignedItem.tx, true);
                         items.push(unsignedItem);
                         if (debug("validations")) console.error(" - Item signed successfully!");
                     } else {
