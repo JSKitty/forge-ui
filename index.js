@@ -106,14 +106,20 @@ async function isItemValid (nItem, isUnsigned, approve = false) {
             if (rawTx.vout[i].value === nItem.value) {
                 if (rawTx.vout[i].scriptPubKey.addresses.includes(nItem.address)) {
                     if (debug("validations")) console.log("Found pubkey of item...");
-                    let isSigGenuine = await zenzo.call("verifymessage", nItem.address, nItem.sig, nItem.tx);
+                    let isSigGenuine = "";
+                    if (nItem.sig)
+                        isSigGenuine = await zenzo.call("verifymessage", nItem.address, nItem.sig, nItem.tx);
                     if (isSigGenuine || !isSigGenuine && isUnsigned) {
                         if (debug("validations") && !isUnsigned) console.info("Sig is genuine...");
                         if (debug("validations") && isUnsigned) console.info("Item is unsigned but valid...");
-                        if (!isUnsigned && hash(nItem.tx + nItem.sig + nItem.address + nItem.name + nItem.value) === nItem.hash // Old item format - Fully validated and signed
-                            || isUnsigned && hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.address + nItem.name + nItem.value) === nItem.hash // New item format - Fully validated but unsigned
-                            || !isUnsigned && hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.sig + nItem.address + nItem.name + nItem.value) === nItem.hash) { // New item format - Fully validated and signed
-
+                        let itemHash = "";
+                        if (!isUnsigned)
+                            itemHash = hash(nItem.tx + nItem.sig + nItem.address + nItem.name + nItem.value); // Old, signed format
+                        if (isUnsigned)
+                            itemHash = hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.address + nItem.name + nItem.value); // New, unsigned format
+                        if (!isUnsigned && itemHash === "")
+                            hash(nItem.tx + JSON.stringify(nItem.prev) + nItem.sig + nItem.address + nItem.name + nItem.value) // New, signed format
+                        if (itemHash === nItem.hash) {
                             if (debug("validations")) console.info("Hash is genuine...");
                             let res = await zenzo.call("gettxout", nItem.tx, 0);
                             let resSecondary = await zenzo.call("gettxout", nItem.tx, 1);
