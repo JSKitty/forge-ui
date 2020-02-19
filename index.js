@@ -517,7 +517,7 @@ class Peer {
     getItems() {
         return superagent
             .post(this.host + "/forge/sync")
-            .send((items.length + itemsToValidate.length).toString())
+            .send((items.length + itemsToValidate.length + unsignedItems.length).toString())
             .then((res) => {
                 if (safeMode) return;
                 // Peer sent items, scan through them and merge lists if necessary
@@ -525,7 +525,7 @@ class Peer {
                 this.setStale(false);
                 let data = JSON.parse(res.text);
                 console.info(`Peer "${this.host}" (${this.index}) sent items (${data.items.length} Items, ${data.pendingItems.length} Pending Items)`);
-                validateItemBatch(null, cleanItems(data.items.concat(data.pendingItems).concat(data.unsignedItems)), false).then(done => {
+                validateItemBatch(null, cleanItems({...data.items, ...data.pendingItems, ...data.unsignedItems}), false).then(done => {
                     if (done) {
                         console.info(`Synced with peer "${this.host}", we now have ${items.length} valid, ${itemsToValidate.length} pending items & ${unsignedItems.length} unsigned items!`);
                     } else console.warn(`Failed to sync with peer "${this.host}"`);
@@ -582,7 +582,7 @@ app.post('/forge/receive', (req, res) => {
 
     let nItems = req.body;
 
-    validateItemBatch(res, cleanItems(nItems.items.concat(nItems.pendingItems).concat(nItems.unsignedItems)), true).then(ress => {
+    validateItemBatch(res, cleanItems({...nItems.items, ...nItems.pendingItems, ...nItems.unsignedItems}), true).then(ress => {
         if (debug("validations")) console.log('Forge: Validated item batch from "' + ip + '"');
     });
 });
@@ -593,7 +593,7 @@ app.post('/forge/sync', (req, res) => {
     let ip = cleanIP(req.ip);
 
     // Check if they have a different amount of items to us, if so, ask for them
-    if (Number(req.body) != (items.length + itemsToValidate.length)) {
+    if (Number(req.body) != (items.length + itemsToValidate.length + unsignedItems.length)) {
         req.peer = getPeer("http://" + ip);
         if (req.peer !== null)
             req.peer.getItems();
