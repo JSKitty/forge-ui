@@ -369,7 +369,7 @@ function cleanItems (itemList) {
 
 // Format a number to to 6 decimal places remove any JS-buggy number changes
 function formatNum(n) {
-    return Number(n.toFixed(6));
+    return Number((Number(n)).toFixed(6));
 }
 
 // Get an item object from our list by it's hash
