@@ -6,9 +6,13 @@ const RPC = require('bitcoin-rpc-promise');
 const nanoid = require('nanoid');
 const x11 = require('x11-hash-js');
 
-// System Application Data directory
+// System Application data directory
 let appdata = process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + 'Library/Preferences' : '/var/local');
 appdata = appdata.replace(/\\/g, '/') + '/forge/';
+
+// ZENZO Core data directory
+let appdataZC = process.env.APPDATA || (process.platform == 'darwin' ? process.env.HOME + 'Library/Preferences' : '/var/local');
+appdataZC = appdataZC.replace(/\\/g, '/') + '/Zenzo/';
 
 /* ------------------ GLOBAL SETTINGS ------------------ */
 // The debugging mode, this allows the user to customize what the forge should log
@@ -985,6 +989,13 @@ async function toDisk (file, data, isJson) {
     return true;
 }
 
+// Write data to a ZENZO Core file
+async function toDiskZC (file, data, isJson) {
+    if (isJson) data = JSON.stringify(data);
+    await fs.writeFileSync(appdataZC + file, data);
+    return true;
+}
+
 // Read data from a specified file
 async function fromDisk (file, isJson) {
     if (!fs.existsSync(appdata + 'data/' + file)) return null;
@@ -1009,6 +1020,19 @@ async function lockCollateralUTXOs() {
     return true;
 }
 
+function generateForgeAddress() {
+    console.log("re")
+    zenzo.call("getnewaddress", "Forge").then(nAddy => {
+        console.log("ree")
+        setupForge(nAddy).then(done => {
+            console.log("reee") // addresess aren't generating properly
+            addy = nAddy;
+            console.info("- New address (" + nAddy + ") successfully generated!");
+            startForge();
+        });
+    });
+}
+
 async function findMatchingVouts(item) {
     // List of unspent vouts to search for
     let vouts = [0,1,2,3,4,5,6,7,8,9];
@@ -1028,48 +1052,52 @@ async function findMatchingVouts(item) {
 
 // Load all relevent data from disk (if it already exists)
 // Item data
-if (!fs.existsSync(appdata + 'data/')) {
-    console.warn("Init: dir 'data/' doesn't exist, creating new directory...");
-    fs.mkdirSync(appdata); /* /forge */
-    fs.mkdirSync(appdata + 'data'); /* /forge/data */
-    console.info("Created data directory at '" + appdata + "data/" + "'");
-} else {
-    console.info("Init: loading previous data from disk...");
-    fromDisk("items.json", true).then(nDiskItems => {
-        if (nDiskItems === null)
-            console.warn("Init: file 'items.json' missing from disk, ignoring...");
-        else
-            items = nDiskItems;
-
-        fromDisk("smelted_items.json", true).then(nDiskSmeltedItems => {
-            if (nDiskSmeltedItems === null)
-                console.warn("Init: file 'smelted_items.json' missing from disk, ignoring...");
+function loadData() {
+    if (!fs.existsSync(appdata + 'data/')) {
+        console.warn("Init: dir 'data/' doesn't exist, creating new directory...");
+        fs.mkdirSync(appdata); /* /forge */
+        fs.mkdirSync(appdata + 'data'); /* /forge/data */
+        console.info("Created data directory at '" + appdata + "data/" + "'");
+    } else {
+        console.info("Init: loading previous data from disk...");
+        fromDisk("items.json", true).then(nDiskItems => {
+            if (nDiskItems === null)
+                console.warn("Init: file 'items.json' missing from disk, ignoring...");
             else
-                itemsSmelted = nDiskSmeltedItems;
+                items = nDiskItems;
 
-            fromDisk("pending_items.json", true).then(nDiskPendingItems => {
-                if (nDiskPendingItems === null)
-                    console.warn("Init: file 'pending_items.json' missing from disk, ignoring...");
+            fromDisk("smelted_items.json", true).then(nDiskSmeltedItems => {
+                if (nDiskSmeltedItems === null)
+                    console.warn("Init: file 'smelted_items.json' missing from disk, ignoring...");
                 else
-                    itemsToValidate = nDiskPendingItems;
+                    itemsSmelted = nDiskSmeltedItems;
 
-                fromDisk("unsigned_items.json", true).then(nDiskUnsignedItems => {
-                    if (nDiskUnsignedItems === null)
-                        console.warn("Init: file 'unsigned_items.json' missing from disk, ignoring...");
+                fromDisk("pending_items.json", true).then(nDiskPendingItems => {
+                    if (nDiskPendingItems === null)
+                        console.warn("Init: file 'pending_items.json' missing from disk, ignoring...");
                     else
-                        unsignedItems = nDiskUnsignedItems;
-        
-                    console.info("Init: loaded from disk:\n- Items: " + items.length + "\n- Pending Items: " + itemsToValidate.length + "\n- Smelted Items: " + itemsSmelted.length + "\n- Unsigned Items: " + unsignedItems.length);
+                        itemsToValidate = nDiskPendingItems;
+
+                    fromDisk("unsigned_items.json", true).then(nDiskUnsignedItems => {
+                        if (nDiskUnsignedItems === null)
+                            console.warn("Init: file 'unsigned_items.json' missing from disk, ignoring...");
+                        else
+                            unsignedItems = nDiskUnsignedItems;
+            
+                        console.info("Init: loaded from disk:\n- Items: " + items.length + "\n- Pending Items: " + itemsToValidate.length + "\n- Smelted Items: " + itemsSmelted.length + "\n- Unsigned Items: " + unsignedItems.length);
+                    });
                 });
             });
         });
-    });
+    }
 }
+
+loadData();
 
 // Start the "janitor" loop to ping peers, validate items and save to disk at intervals
 let janitor = setInterval(function() {
     // Only perform these when we've got atleast one peer and the RPC is present, otherwise we're potentially offline, or validating stale data
-    if (peers.length === 0 || safeMode) return;
+    if (peers.length === 0 || safeMode || !isForgeRunning) return;
 
     // Ping peers
     peers.forEach(peer => {
@@ -1131,8 +1159,10 @@ let janitor = setInterval(function() {
 }, 5000);
 
 // Setup the wallet variables
-let addy = "";
+let addy = null;
 let zenzo = null;
+
+let isForgeRunning = false;
 
 // Catch if the wallet RPC isn't available
 function rpcError() {
@@ -1141,46 +1171,84 @@ function rpcError() {
 }
 
 // Load variables from disk config
-fromDisk("config.json", true).then(config => {
-    let rpcAuth = {user: config.wallet.user, pass: config.wallet.pass, port: config.wallet.port};
-    addy = config.wallet.address;
-    zenzo = new RPC('http://' + rpcAuth.user + ':' + rpcAuth.pass + '@localhost:' + rpcAuth.port);
-    if (config.forgeport) {
-        forgePort = config.forgeport;
-    } else {
-        console.info("- Config missing 'forgeport' option, defaulting to '" + forgePort + "'.");
-    }
-    if (config.maxinvalidscore) {
-        maxInvalidScore = config.maxinvalidscore;
-    }
-    if (config.debug) {
-        debugType = config.debug;
-    } else {
-        console.info("- Config missing 'debug' option, defaulting to '" + debugType + "'.");
-    }
-    console.info("\n--- Configuration ---\n - RPC Port: " + rpcAuth.port + "\n - Forge Port: " + forgePort + "\n - Forge Address: " + addy + "\n - Debugging Mode: " + debugType + "\n - Max Invalidation Score: " + maxInvalidScore + "\n");
-    zenzo.call("help").then(msg => {
-        console.log("Connected to ZENZO-RPC successfully!");
-
-        // Incase the zenzod daemon was restarted, re-lock our collateral UTXOs to prevent accidental spends
-        lockCollateralUTXOs().then(locked => {
-            if (locked) console.info("All collaterals locked successfully!");
-        });
-
-        // Start listening for Forge requests
-        app.listen(forgePort);
-
-        // Let's bootstrap the validator with seednodes
-        const seednodes = ["45.12.32.114", "144.91.87.251:8000"];
-        for (let i=0; i<seednodes.length; i++) {
-            let seednode = new Peer(seednodes[i]);
-            seednode.connect(true);
+function startForge() {
+    fromDisk("config.json", true).then(config => {
+        if (!config) {
+            console.warn("- config.json is missing, if you're not using the Forge GUI wallet, you'll have to fix this manually.");
+            return;
         }
-    }).catch(function(){
-        console.error("Failed to connect to ZENZO-RPC, running Forge in Safe Mode.");
-        rpcError();
+        let rpcAuth = {user: config.wallet.user, pass: config.wallet.pass, port: config.wallet.port};
+        if (config.wallet.address !== null) {
+            addy = config.wallet.address;
+        } else {
+            console.warn("- Config missing 'address', generating a new address...");
+        }
+        zenzo = new RPC('http://' + rpcAuth.user + ':' + rpcAuth.pass + '@localhost:' + rpcAuth.port);
+        if (config.forgeport) {
+            forgePort = config.forgeport;
+        } else {
+            console.info("- Config missing 'forgeport' option, defaulting to '" + forgePort + "'.");
+        }
+        if (config.maxinvalidscore) {
+            maxInvalidScore = config.maxinvalidscore;
+        }
+        if (config.debug) {
+            debugType = config.debug;
+        } else {
+            console.info("- Config missing 'debug' option, defaulting to '" + debugType + "'.");
+        }
+        if (addy === null) return generateForgeAddress();
+        console.info("\n--- Configuration ---\n - RPC Port: " + rpcAuth.port + "\n - Forge Port: " + forgePort + "\n - Forge Address: " + addy + "\n - Debugging Mode: " + debugType + "\n - Max Invalidation Score: " + maxInvalidScore + "\n");
+        zenzo.call("help").then(msg => {
+            console.log("Connected to ZENZO-RPC successfully!");
+
+            // Incase the zenzod daemon was restarted, re-lock our collateral UTXOs to prevent accidental spends
+            lockCollateralUTXOs().then(locked => {
+                if (locked) console.info("All collaterals locked successfully!");
+            });
+
+            // Start listening for Forge requests
+            app.listen(forgePort);
+
+            // Let's bootstrap the validator with seednodes
+            const seednodes = ["45.12.32.114", "144.91.87.251:8000"];
+            for (let i=0; i<seednodes.length; i++) {
+                let seednode = new Peer(seednodes[i]);
+                seednode.connect(true);
+            }
+            isForgeRunning = true;
+        }).catch(function(){
+            console.error("Failed to connect to ZENZO-RPC, running Forge in Safe Mode.");
+            rpcError();
+        });
     });
-});
+}
+
+startForge();
+
+async function setupForge(address) {
+    // Create config.json and populate with information
+    let nConfig = {
+        wallet: {
+            user: "user",
+            pass: "forgepass",
+            port: 26211,
+            address: address
+        },
+        maxinvalidscore: 25,
+        debug: "none"
+    }
+    let nConfigZC = "txindex=1\r\n" +
+                    "rpcuser=" + nConfig.wallet.user + "\r\n" +
+                    "rpcpassword=" + nConfig.wallet.pass + "\r\n" +
+                    "listen=1" + "\r\n" +
+                    "server=1";
+
+    await toDisk("config.json", nConfig, true);
+    await toDiskZC("zenzo.conf", nConfigZC, false);
+    return true;
+}
+
 
 // Save our AuthKey to disk to allow other applications to access the user's Forge node during private actions
 /* This is insecure, and will be revamped in the future to have a permission-based system, instead of private key based */
