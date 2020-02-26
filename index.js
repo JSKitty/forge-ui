@@ -1199,7 +1199,7 @@ function startForge() {
         }
         if (addy === null) return generateForgeAddress();
         console.info("\n--- Configuration ---\n - RPC Port: " + rpcAuth.port + "\n - Forge Port: " + forgePort + "\n - Forge Address: " + addy + "\n - Debugging Mode: " + debugType + "\n - Max Invalidation Score: " + maxInvalidScore + "\n");
-        zenzo.call("help").then(msg => {
+        zenzo.call("uptime").then(msg => {
             console.log("Connected to ZENZO-RPC successfully!");
 
             // Incase the zenzod daemon was restarted, re-lock our collateral UTXOs to prevent accidental spends

@@ -29,6 +29,69 @@
   .sidenav a:hover {
     color: #f1f1f1;
   }
+
+  .border {
+    padding-top: 10px;
+    border-style: solid;
+    border-width: 3px;
+    border-color: lightgray;
+    border-radius: 250px;
+    padding-bottom: 10px;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .tiny-border {
+    padding-top: 5px;
+    border-style: solid;
+    border-width: 1.5px;
+    border-color: lightgray;
+    border-radius: 250px;
+    padding-bottom: 5px;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .btn {
+    border-style: solid;
+    border-width: 1px;
+    border-color: gray;
+    border-radius: 25px;
+    width: 25%;
+    min-width: 75px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .address_input {
+    text-align: center;
+    border-style: solid;
+    border-width: 1px;
+    border-color: gray;
+    border-radius: 25px;
+    width: 50%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .amount_input {
+    text-align: center;
+    border-style: solid;
+    border-width: 1px;
+    border-color: gray;
+    border-radius: 25px;
+    width: 20%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-top: 5px;
+    padding-bottom: 4px;
+  }
   </style>
 
   <body style="
@@ -107,8 +170,8 @@
         <br>
         <br>
         If you'd like to mess with some files and dive in the dirt, select "Manual Setup".
-      <input type="button" value="Manual Setup" onclick="manualSetup()">
-      <input type="button" value="Automatic Setup" onclick="setupForgeGui()">
+      <input class="btn" type="button" value="Manual Setup" onclick="manualSetup()">
+      <input class="btn" type="button" value="Automatic Setup" onclick="setupForgeGui()">
       </p>
 
       <script>
@@ -162,10 +225,10 @@
 
       <div style="text-align: center;margin-top: 50px;">
         <h2>Create a Decentralized ZNZ-Backed Asset</h2>
-        <p>Name: </p><input id="new_item_name" type="text">
-        <p>Value: </p><input id="new_item_value" type="number">
+        <p>Name: </p><input class="address_input" id="new_item_name" type="text">
+        <p>Value: </p><input class="amount_input" id="new_item_value" type="number">
         <br>
-        <input type="button" value="Craft" onclick="craftItem()">
+        <input style="margin-top: 25px;margin-bottom: 15px;" class="btn" type="button" value="Craft" onclick="craftItem()">
       </div>
 
       <!-- FORGE LIBRARY GOES BELOW -->
@@ -230,7 +293,7 @@
             getForgeInventory(addy).then(inv => {
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                inv.items[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + inv.items[i].name + '<br><b>Value: </b>' + inv.items[i].value + '<br><button onclick="smeltForgeItem(\'' + inv.items[i].hash + '\')">Smelt</button>' + ((hasValidReceiver) ? '<button onclick="transferForgeItem(\'' + inv.items[i].hash + '\')">Transfer</button>' : '') + '</div>';
+                inv.items[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + inv.items[i].name + '<br><b>Value: </b>' + inv.items[i].value + '<br><button class="btn" onclick="smeltForgeItem(\'' + inv.items[i].hash + '\')">Smelt</button>' + ((hasValidReceiver) ? '<button class="btn" onclick="transferForgeItem(\'' + inv.items[i].hash + '\')">Transfer</button>' : '') + '</div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
                 inv.pendingItems[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;opacity: 0.5;">' + "<b>Name:<b/> " + inv.pendingItems[i].name + '<br><b>Value: </b>' + inv.pendingItems[i].value + '</div>';
@@ -263,17 +326,27 @@
           refreshInventory();
       </script>
     </div>
-    <div id="wallet" style="height: 100vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
-      <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">ZENZO Wallet</h1>
-      <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Available: <b id="available_znz">0</b><br>Total: <b id="total_znz">0</b><br>Locked: <b id="locked_znz">0</b></h2><br>
+    <div id="wallet" style="height: 80vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
+      <div style="width: 100%;">
+        <h1 class="border" style="text-align: center;font-family: helvetica;">ZENZO Wallet</h1>
+      </div>
+      <div class="tiny-border" style="margin-top: 0;background-color: #eaeaea;">
+        <h3 style="margin-top: 0;margin-bottom:0;">Available Balance: <b id="available_znz">0</b></h3>
+      </div>
+      <div class="tiny-border" style="margin-top: 25px;opacity: 0.6;">
+        <h3 style="margin-top: 0;margin-bottom:0;">Total Balance: <b id="total_znz">0</b></h3>
+        <h3 style="margin-top: 0;margin-bottom:0;">Locked Balance: <b id="locked_znz">0</b></h3>
+      </div>
+      <br>
       
-      <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Receive ZNZ</h2><p>Your receive address</p>
+      <h2 class="border" style="margin-top: 40px;">Receive ZNZ</h2>
       <input id="receive_address" readonly="readonly" type="text" value="" style="text-align: center; width: 315px; border-style: none; background-color: #8678dc4a; border-radius: 1000px;"><br>
 
-      <br><h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Send ZNZ</h2>
-      <input id="send_to" oninput="checkForProfile()" type="text" placeholder="ZNZ Address or Name">
-      <input id="send_amount" type="number" placeholder="Amount (ZNZ)">
-      <button onclick="sendGuiTX()">Send</button>
+      <br><h2 class="border" style="margin-top: 40px;">Send ZNZ</h2>
+      <input class="address_input" id="send_to" oninput="checkForProfile()" type="text" placeholder="ZNZ Address or Username">
+      <input class="amount_input" id="send_amount" type="number" placeholder="Amount (ZNZ)">
+      <br><br>
+      <button class="btn" onclick="sendGuiTX()">Send</button>
       <br>
       <p id="sending_to_parent" style="color:black; opacity: 0.5; display:none">(Sending to <b id="sending_to">???</b>)</p>
 
@@ -373,9 +446,9 @@
       <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Create a ZENZO Profile</h1>
       <h3 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">What is a ZENZO Profile?</h3>
       <p>A ZENZO Profile is a decentralized ZFI (ZENZO Forge Item) that allocates a custom, human-readable username to a ZENZO address.<br>This allows you to have a completely trustless and immutable player profile, directly on the ZENZO Forge network.</p>
-      
-      <input id="new_username" type="text" placeholder="Zentoshi Zakamoto" style="text-align: center; width: 250px;"><br>
-      <button onclick="createUsername()">Create Profile</button>
+      <br><br>
+      <input class="address_input" id="new_username" type="text" placeholder="Zentoshi Zakamoto" style="text-align: center; width: 250px;"><br>
+      <button style="margin-top: 25px;" class="btn" onclick="createUsername()">Create Profile</button>
 
       <script>
         let user_profile = null;
