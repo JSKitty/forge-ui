@@ -1,5 +1,5 @@
 {
-  "name": "zenzo-forge",
+  "name": "npm-package-zenzo-forge",
   "version": "0.3.0",
   "description": "A decentralized (P2P) metadata side-network for cryptocurrencies, optimized for gaming.",
   "main": "main.js",
