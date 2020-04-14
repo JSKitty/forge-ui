@@ -354,7 +354,7 @@
         function fetchBalances() {
           document.getElementById("receive_address").value = addy;
           zenzo.call("getwalletinfo").then(RPCbalances => {
-            document.getElementById("total_znz").innerHTML = RPCbalances.balance.toFixed(2);
+            document.getElementById("total_znz").innerHTML = Number(RPCbalances.balance.toFixed(2)).toLocaleString();
             let lockedBalance = 0;
             for (let i=0; i<items.length; i++) {
                 if (items[i].address === addy) lockedBalance += items[i].value;
@@ -363,8 +363,8 @@
                 if (itemsToValidate[i].address === addy) lockedBalance += itemsToValidate[i].value;
             }
             lockedBalance = formatNum(lockedBalance);
-            document.getElementById("available_znz").innerHTML = (RPCbalances.balance - lockedBalance).toFixed(2);
-            document.getElementById("locked_znz").innerHTML = lockedBalance;
+            document.getElementById("available_znz").innerHTML = Number((RPCbalances.balance - lockedBalance).toFixed(2)).toLocaleString();
+            document.getElementById("locked_znz").innerHTML = Number(lockedBalance.toFixed(2)).toLocaleString();
           });
         }
 
