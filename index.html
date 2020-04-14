@@ -333,16 +333,16 @@
       <div class="tiny-border" style="margin-top: 0;background-color: #eaeaea;">
         <h3 style="margin-top: 0;margin-bottom:0;">Available Balance: <b id="available_znz">0</b></h3>
       </div>
-      <div class="tiny-border" style="margin-top: 25px;opacity: 0.6;">
+      <div class="tiny-border" style="margin-top: 15px;opacity: 0.6;">
         <h3 style="margin-top: 0;margin-bottom:0;">Total Balance: <b id="total_znz">0</b></h3>
         <h3 style="margin-top: 0;margin-bottom:0;">Locked Balance: <b id="locked_znz">0</b></h3>
       </div>
       <br>
       
-      <h2 class="border" style="margin-top: 40px;">Receive ZNZ</h2>
+      <h2 class="border" style="margin-top: 30px;">Receive ZNZ</h2>
       <input id="receive_address" readonly="readonly" type="text" value="" style="text-align: center; width: 315px; border-style: none; background-color: #8678dc4a; border-radius: 1000px;"><br>
 
-      <br><h2 class="border" style="margin-top: 40px;">Send ZNZ</h2>
+      <br><h2 class="border" style="margin-top: 30px;">Send ZNZ</h2>
       <input class="address_input" id="send_to" oninput="checkForProfile()" type="text" placeholder="ZNZ Address or Username">
       <input class="amount_input" id="send_amount" type="number" placeholder="Amount (ZNZ)">
       <br><br>
@@ -415,7 +415,10 @@
               console.info("Found username: " + toUsername);
             } else {
               document.getElementById("sending_to").innerHTML = "invalid Address or Username";
-              document.getElementById("sending_to_parent").style.display = "block";
+              if (to.length > 0)
+                document.getElementById("sending_to_parent").style.display = "block";
+              else
+                document.getElementById("sending_to_parent").style.display = "none";
               hasValidReceiver = false;
               console.info("Couldn't find user or address");
             }
