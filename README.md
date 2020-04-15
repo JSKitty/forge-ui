@@ -2,41 +2,32 @@
 
 ## Developer Setup
 
-```Coming Soon```
+### For GUI developers (Such as Windows or Github Desktop)
+
+1. Download Node.js and Github Desktop
+
+2. In Github Desktop go to `File --> Clone Repo... --> URL`, paste the github URL of your Forge repo and hit "Clone"
+
+3. After cloning, go to the top-bar `Repository --> Open in Command Prompt`, type `npm i` to install Forge dependencies
+
+4. After dependencies finish downloading, you can type `npm start` to run the GUI on-the-fly, or `npm run-script build` to compile binaries for the OS you are using (E.g: A Windows `.exe` binary)
+
+5. (If you plan on compiling binaries, please run `npm i electron-packager -g` and then run `npm run-script build` afterwards)
+
+### For CLI developers (Such as Linux and git CLI)
+
+1. Install Node.js and Git
+
+2. `git clone` your Forge repo, `cd` into the root of the repo and run `npm i`
+
+3. You may now execute `node lib/index.js` to run the Forge in headless and/or CLI mode
 
 ## User Setup
 
-1. Download the ZENZO Forge binaries:
+1. Download the ZENZO Forge zip, and unzip the folder:
 
 - Windows: https://mega.nz/#!ZHhAVAJR!4b5jlr-ISyONw8jzxpTzHagmJyjHULzDj0U2wvPsEn0
 
-2. Open `%appdata%/Zenzo/zenzo.conf` in a text editor, copy/paste the below config:
+2. Run the ZENZO Forge and follow the setup guide, you may run the "Automated Setup" or do a manual setup
 
-```
-txindex=1
-rpcuser=user
-rpcpassword=pass
-listen=1
-server=1
-```
-
-3. (Re)start ZENZO Core.
-
-4. Start ZENZO Forge, wait for a white screen, close ZENZO Forge (File --> Exit)
-
-5. Open `%appdata%/forge/data/config.json` (Create the file, if it doesn't already exist) and paste the below file contents into it:
-
-```
-{
-    "wallet": {
-        "user": "user",
-        "pass": "pass",
-        "port": 26211,
-        "address": "Z..........."
-    }
-}
-```
-
-6. Replace the "Z...~" in the "address" field with an address from your ZENZO Core
-
-7. Save file, unlock ZENZO Core wallet (if password protected), open ZENZO Forge and start crafting!
+3. Finished! Remember to unlock ZENZO Core (if password protected) so that the Forge can perform Crafting and Transfers
