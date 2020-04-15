@@ -92,6 +92,33 @@
     padding-top: 5px;
     padding-bottom: 4px;
   }
+
+  .item_border {
+    display: inline-block;
+    cursor: pointer;
+    border-style: solid;
+    border-width: 2px;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 10px;
+    height:200px;
+    width:160px;
+    background-color: white;
+    text-align:center;
+  }
+
+  .item_border_img {
+    height:75%;
+    width:75%;
+    background-color: #dddddd;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top:10px;
+    margin-bottom:10px;
+    border-radius:12px;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
   </style>
 
   <body style="
@@ -205,8 +232,8 @@
 
         async function isDaemonOnline() {
           try {
-            let uptime = await zenzo.call("uptime");
-            return ((uptime > 0) ? true : false);
+            let uptime = await zenzo.call("help");
+            return ((uptime.length > 0) ? true : false);
           } catch(e){};
         }
       </script>
@@ -219,16 +246,19 @@
       display: none;">
 
       <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">ZENZO Forge Inventory</h1>
-      <p style="text-align: center;font-family: helvetica;">Peers: <b id="peerCount">Offline (No peers connected)</b></p>
       <br>
-      <span id="items"></span>
+      <div style="width: 100%;height:275px;overflow-x: hidden;overflow-y: scroll;background-color: #e2e2e2;">
+        <span id="items"></span>
+      </div>
 
-      <div style="text-align: center;margin-top: 50px;">
+      </div>
+      <div style="text-align: center;margin-top: 25px;">
         <h2>Create a Decentralized ZNZ-Backed Asset</h2>
-        <p>Name: </p><input class="address_input" id="new_item_name" type="text">
-        <p>Value: </p><input class="amount_input" id="new_item_value" type="number">
+        <input class="address_input" placeholder="Name (E.g: The Grandmaster Scroll)" id="new_item_name" type="text">
         <br>
-        <input style="margin-top: 25px;margin-bottom: 15px;" class="btn" type="button" value="Craft" onclick="craftItem()">
+        <input class="amount_input" style="width: 35% !important;margin-top:5px;" placeholder="ZNZ Value (E.g: 15000)" id="new_item_value" type="number">
+        <br>
+        <input style="margin-top: 5px;margin-bottom: 15px;" class="btn" type="button" value="Craft" onclick="craftItem()">
       </div>
 
       <!-- FORGE LIBRARY GOES BELOW -->
@@ -278,13 +308,13 @@
               let res = await superagent.post('http://127.0.0.1:80/forge/items');
               res = JSON.parse(res.text);
               for (let i=0; i<res.items.length; i++) {
-                if (res.items[i].address === addr) inv.items.push(res.items[i]);
+                if (res.items[i].address === addr && !res.items[i].name.startsWith("zenzo.")) inv.items.push(res.items[i]);
               }
               for (let i=0; i<res.pendingItems.length; i++) {
-                if (res.pendingItems[i].address === addr) inv.pendingItems.push(res.pendingItems[i]);
+                if (res.pendingItems[i].address === addr && !res.pendingItems[i].name.startsWith("zenzo.")) inv.pendingItems.push(res.pendingItems[i]);
               }
               for (let i=0; i<res.pendingItems.length; i++) {
-                if (res.unsignedItems[i].address === addr) inv.unsignedItems.push(res.unsignedItems[i]);
+                if (res.unsignedItems[i].address === addr && !res.unsignedItems[i].name.startsWith("zenzo.")) inv.unsignedItems.push(res.unsignedItems[i]);
               }
               return inv;
           }
@@ -293,13 +323,13 @@
             getForgeInventory(addy).then(inv => {
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                inv.items[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;">' + "<b>Name:<b/> " + inv.items[i].name + '<br><b>Value: </b>' + inv.items[i].value + '<br><button class="btn" onclick="smeltForgeItem(\'' + inv.items[i].hash + '\')">Smelt</button>' + ((hasValidReceiver) ? '<button class="btn" onclick="transferForgeItem(\'' + inv.items[i].hash + '\')">Transfer</button>' : '') + '</div>';
+                inv.items[i].html = '<div class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.items[i].value + ' ZNZ<br><button style="display:none !important;" class="btn" onclick="smeltForgeItem(\'' + inv.items[i].hash + '\')">Smelt</button>' + ((hasValidReceiver) ? '<button class="btn" onclick="transferForgeItem(\'' + inv.items[i].hash + '\')">Transfer</button>' : '') + '</div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
-                inv.pendingItems[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;opacity: 0.5;">' + "<b>Name:<b/> " + inv.pendingItems[i].name + '<br><b>Value: </b>' + inv.pendingItems[i].value + '</div>';
+                inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.unsignedItems.length; i++) {
-                inv.unsignedItems[i].html = '<div style="display: inline-block;border-style: solid;border-width: 2px;border-radius: 7px;padding: 10px;margin: 10px;opacity: 0.5;">' + "<b>Name:<b/> " + inv.unsignedItems[i].name + '<br><b>Value: </b>' + inv.unsignedItems[i].value + '</div>';
+                inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
               }
 
               let sortedItems = inv.items.concat(inv.pendingItems, inv.unsignedItems);
@@ -330,6 +360,7 @@
       <div style="width: 100%;">
         <h1 class="border" style="text-align: center;font-family: helvetica;">ZENZO Wallet</h1>
       </div>
+      <p style="text-align: center;font-family: helvetica;">Peers: <b id="peerCount">Offline (No peers connected)</b></p>
       <div class="tiny-border" style="margin-top: 0;background-color: #eaeaea;">
         <h3 style="margin-top: 0;margin-bottom:0;">Available Balance: <b id="available_znz">0</b></h3>
       </div>
@@ -490,6 +521,10 @@
           } else {
             return false;
           }
+        }
+        function truncateWithEllipses(text, max) 
+        {
+            return text.substr(0,max-1)+(text.length>max?'&hellip;':''); 
         }
       </script>
     </div>
