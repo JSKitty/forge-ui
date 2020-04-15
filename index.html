@@ -250,8 +250,44 @@
       <div style="width: 100%;height:275px;overflow-x: hidden;overflow-y: scroll;background-color: #e2e2e2;">
         <span id="items"></span>
       </div>
-
+      <div id="item_menu" style="display: none; position: absolute; background-color: rgb(106, 106, 106); width: 50%; height: 450px; margin-left: auto; margin-right: auto; margin-top: 50px; top: 0px; right: 15%; color: white; text-align: center; border-radius: 12px; z-index: 0; border-style: solid; border-color: rgb(147, 232, 255); border-width: 5px;">
+        <p onclick="closeItemMenu()" style="position: absolute;top: -10px;right: 10px;cursor: pointer;">x</p>
+        <h3 id="item_menu_name">The Grandmaster Scroll</h3>
+        <div id="item_menu_image" class="item_border_img" style="background-image: url('forge_unknown.png');height: 275px !important;width: 220px !important; border-style: solid;"></div>
+        <h3 id="item_menu_value">1,000 ZNZ</h3>
+        <button id="item_menu_smelt" class="btn" onclick="smeltForgeItemBtn()">Smelt</button>
+        <button id="item_menu_transfer" style="display: none;" class="btn" onclick="transferForgeItemBtn()">Transfer</button>
+        <div style="
+        width: 3000px;
+        height: 3000px;
+        background-color: black;
+        position: absolute;
+        top: -500px;
+        left: -500px;
+        opacity: 0.75;
+        z-index: -1 !important;
+        ">
+        </div>
       </div>
+      <script>
+        let selectedItem = null;
+        function openItemMenu(tx) {
+          let thisItem = getItem(tx);
+          document.getElementById("item_menu_name").innerHTML = thisItem.name;
+          document.getElementById("item_menu_value").innerHTML = thisItem.value + " ZNZ";
+          selectedItem = tx;
+          document.getElementById("item_menu").style.display = "block";
+        }
+        function closeItemMenu() {
+          document.getElementById("item_menu").style.display = "none";
+        }
+        function smeltForgeItemBtn() {
+          smeltForgeItem(selectedItem);
+        }
+        function transferForgeItemBtn() {
+          transferForgeItem(selectedItem);
+        }
+      </script>
       <div style="text-align: center;margin-top: 25px;">
         <h2>Create a Decentralized ZNZ-Backed Asset</h2>
         <input class="address_input" placeholder="Name (E.g: The Grandmaster Scroll)" id="new_item_name" type="text">
@@ -289,7 +325,7 @@
           function smeltForgeItem (hash) {
             let nItem = getItem(hash);
             zenzo.call("signmessage", addy, "smelt_" + nItem.tx).then(sig => {
-              smeltItem(hash, sig).then(a => {});
+              smeltItem(hash, sig).then(a => {closeItemMenu()});
             });
           }
 
@@ -298,6 +334,7 @@
               .post('http://127.0.0.1:80/forge/transfer')
               .send({ item: item, to: currentValidReceiver, auth: authToken})
               .end((err, res) => {
+                closeItemMenu()
                 console.info(res);
                 refreshInventory();
               });
@@ -323,13 +360,13 @@
             getForgeInventory(addy).then(inv => {
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                inv.items[i].html = '<div class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.items[i].value + ' ZNZ<br><button style="display:none !important;" class="btn" onclick="smeltForgeItem(\'' + inv.items[i].hash + '\')">Smelt</button>' + ((hasValidReceiver) ? '<button class="btn" onclick="transferForgeItem(\'' + inv.items[i].hash + '\')">Transfer</button>' : '') + '</div>';
+                inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.items[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
-                inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
+                inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.unsignedItems.length; i++) {
-                inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
+                inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
               }
 
               let sortedItems = inv.items.concat(inv.pendingItems, inv.unsignedItems);
@@ -344,12 +381,20 @@
 
 
           setInterval(function() {
+            // Update peer UI
             if (safeMode) return document.getElementById("peerCount").innerHTML = "Offline (Missing RPC Connection)<br>Please start ZENZO Core, then restart the Forge.";
             if (peers.length === 0) {
               document.getElementById("peerCount").innerHTML = "Offline (No peers connected)";
             } else {
               document.getElementById("peerCount").innerHTML = peers.length;
               refreshInventory();
+            }
+
+            // Update selected card UI
+            if (selectedItem !== null && hasValidReceiver) {
+              document.getElementById("item_menu_transfer").style.display = "";
+            } else {
+              document.getElementById("item_menu_transfer").style.display = "none";
             }
           }, 1000);
 
