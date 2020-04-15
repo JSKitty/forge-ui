@@ -131,6 +131,8 @@
     color: black;
     font-family: helvetica;">
 
+    <script src="./gui/dialog-component.js"></script>
+
     <div id="sidenav" class="sidenav" style="display: none;">
       <a onclick="openProfile();" style="cursor: pointer;">Profile</a>
       <a onclick="openWallet();" style="cursor: pointer;">Wallet</a>
@@ -253,7 +255,7 @@
       <div id="item_menu" style="display: none; position: absolute; background-color: rgb(106, 106, 106); width: 50%; height: 450px; margin-left: auto; margin-right: auto; margin-top: 50px; top: 0px; right: 15%; color: white; text-align: center; border-radius: 12px; z-index: 0; border-style: solid; border-color: rgb(147, 232, 255); border-width: 5px;">
         <p onclick="closeItemMenu()" style="position: absolute;top: -10px;right: 10px;cursor: pointer;">x</p>
         <h3 id="item_menu_name">The Grandmaster Scroll</h3>
-        <div id="item_menu_image" class="item_border_img" style="background-image: url('forge_unknown.png');height: 275px !important;width: 220px !important; border-style: solid;"></div>
+        <div id="item_menu_image" class="item_border_img" style="background-image: url('./gui/forge_unknown.png');height: 275px !important;width: 220px !important; border-style: solid;"></div>
         <h3 id="item_menu_value">1,000 ZNZ</h3>
         <button id="item_menu_smelt" class="btn" onclick="smeltForgeItemBtn()">Smelt</button>
         <button id="item_menu_transfer" style="display: none;" class="btn" onclick="transferForgeItemBtn()">Transfer</button>
@@ -275,17 +277,49 @@
           let thisItem = getItem(tx);
           document.getElementById("item_menu_name").innerHTML = thisItem.name;
           document.getElementById("item_menu_value").innerHTML = thisItem.value + " ZNZ";
-          selectedItem = tx;
+          selectedItem = thisItem;
           document.getElementById("item_menu").style.display = "block";
         }
         function closeItemMenu() {
           document.getElementById("item_menu").style.display = "none";
         }
         function smeltForgeItemBtn() {
-          smeltForgeItem(selectedItem);
+          let confirm = new ConfirmClass();
+          confirm.show({
+            title: 'Confirm Smelt',
+            content: 'Are you sure you want to smelt "' + selectedItem.name + '"? Once smelted, this item will be destroyed forever and you will receive a total of ' + selectedItem.value + ' ZNZ',
+            btns: [{
+              text: "Confirm",
+              callback: function(){
+                console.log('Clicked Confirm Button');
+                smeltForgeItem(selectedItem.tx);
+              }
+            }, {
+              text: 'Cancel',
+              callback: function(){
+                console.log('Clicked Cancel Button');
+              }
+            }]
+          })
         }
         function transferForgeItemBtn() {
-          transferForgeItem(selectedItem);
+          let confirm = new ConfirmClass();
+          confirm.show({
+            title: 'Confirm Transfer',
+            content: 'Are you sure you want to send "' + selectedItem.name + '" to ' + (currentValidReceiverName === '' ? '"' + currentValidReceiver + '"' : '"' + currentValidReceiverName + '"') + '?',
+            btns: [{
+              text: "Confirm",
+              callback: function(){
+                console.log('Clicked Confirm Button');
+                transferForgeItem(selectedItem.tx);
+              }
+            }, {
+              text: 'Cancel',
+              callback: function(){
+                console.log('Clicked Cancel Button');
+              }
+            }]
+          })
         }
       </script>
       <div style="text-align: center;margin-top: 25px;">
@@ -304,12 +338,29 @@
       <script>
           let hasValidReceiver = false;
           let currentValidReceiver = "";
+          let currentValidReceiverName = "";
           function craftItem() {
             if (peers.length === 0) return;
             let nName = document.getElementById("new_item_name").value;
             let nValue = Number(document.getElementById("new_item_value").value);
 
-            craftForgeItem(nName, nValue);
+            let confirm = new ConfirmClass();
+            confirm.show({
+              title: 'Confirm Craft',
+              content: 'Are you sure you want to craft "' + nName + '"? Once crafted this item will arrive in your inventory and a total of ' + (nValue) + ' ZNZ will be locked (Minus 0.001 fee)',
+              btns: [{
+                text: "Confirm",
+                callback: function(){
+                  console.log('Clicked Confirm Button');
+                  craftForgeItem(nName, nValue);
+                }
+              }, {
+                text: 'Cancel',
+                callback: function(){
+                  console.log('Clicked Cancel Button');
+                }
+              }]
+            })
           }
 
           function craftForgeItem (name, value) {
@@ -360,13 +411,13 @@
             getForgeInventory(addy).then(inv => {
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.items[i].value + ' ZNZ</div>';
+                inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>' + inv.items[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
-                inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
+                inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.unsignedItems.length; i++) {
-                inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'forge_unknown.png\');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
+                inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
               }
 
               let sortedItems = inv.items.concat(inv.pendingItems, inv.unsignedItems);
@@ -391,7 +442,7 @@
             }
 
             // Update selected card UI
-            if (selectedItem !== null && hasValidReceiver) {
+            if (selectedItem && hasValidReceiver) {
               document.getElementById("item_menu_transfer").style.display = "";
             } else {
               document.getElementById("item_menu_transfer").style.display = "none";
@@ -449,7 +500,7 @@
           const to = document.getElementById("send_to").value;
 
           let toAddress;
-          let toUsername;
+          let toUsername = "";
 
           let isUsername = false;
           if (to.length !== 34) {
@@ -465,10 +516,26 @@
             toAddress = to;
           }
 
-          zenzo.call("sendtoaddress", toAddress, amt).then(guiTx => {
-            console.info("GUI: Transaction sent! " + guiTx);
-            fetchBalances();
-          }).catch(console.error);
+          let confirm = new ConfirmClass();
+          confirm.show({
+            title: 'Confirm Transaction',
+            content: 'Are you sure you want to send ' + amt.toLocaleString() + ' ZNZ to ' + (toUsername === '' ? '"' + toAddress + '"' : '"' + toUsername + '"') + '?',
+            btns: [{
+              text: "Confirm",
+              callback: function(){
+                console.log('Clicked Confirm Button');
+                zenzo.call("sendtoaddress", toAddress, amt).then(guiTx => {
+                  console.info("GUI: Transaction sent! " + guiTx);
+                  fetchBalances();
+                }).catch(console.error);
+              }
+            }, {
+              text: 'Cancel',
+              callback: function(){
+                console.log('Clicked Cancel Button');
+              }
+            }]
+          })
         }
 
         function checkForProfile () {
@@ -488,6 +555,7 @@
               document.getElementById("sending_to").innerHTML = toAddress;
               document.getElementById("sending_to_parent").style.display = "block";
               hasValidReceiver = true;
+              currentValidReceiverName = toUsername;
               console.info("Found username: " + toUsername);
             } else {
               document.getElementById("sending_to").innerHTML = "invalid Address or Username";
@@ -496,6 +564,7 @@
               else
                 document.getElementById("sending_to_parent").style.display = "none";
               hasValidReceiver = false;
+              currentValidReceiverName = "";
               console.info("Couldn't find user or address");
             }
           } else {
@@ -507,11 +576,13 @@
               document.getElementById("sending_to").innerHTML = toUsername;
               document.getElementById("sending_to_parent").style.display = "block";
               hasValidReceiver = true;
+              currentValidReceiverName = toUsername;
               console.info("Found username: " + toUsername);
             } else {
               document.getElementById("sending_to").innerHTML = to;
               document.getElementById("sending_to_parent").style.display = "block";
               hasValidReceiver = true;
+              currentValidReceiverName = "";
               console.info("Regular address");
             }
           }
