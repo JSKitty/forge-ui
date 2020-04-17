@@ -255,20 +255,21 @@
       <div id="item_menu" style="display: none; position: absolute; background-color: rgb(106, 106, 106); width: 50%; height: 450px; margin-left: auto; margin-right: auto; margin-top: 50px; top: 0px; right: 15%; color: white; text-align: center; border-radius: 12px; z-index: 0; border-style: solid; border-color: rgb(147, 232, 255); border-width: 5px;">
         <p onclick="closeItemMenu()" style="position: absolute;top: -10px;right: 10px;cursor: pointer;">x</p>
         <h3 id="item_menu_name">The Grandmaster Scroll</h3>
-        <div id="item_menu_image" class="item_border_img" style="background-image: url('./gui/forge_unknown.png');height: 275px !important;width: 220px !important; border-style: solid;"></div>
+        <div id="item_menu_image">
+          <div class="item_border_img" style="background-image: url('./gui/forge_unknown.png');height: 275px !important;width: 220px !important; border-style: solid;"></div>
+        </div>
         <h3 id="item_menu_value">1,000 ZNZ</h3>
         <button id="item_menu_smelt" class="btn" onclick="smeltForgeItemBtn()">Smelt</button>
         <button id="item_menu_transfer" style="display: none;" class="btn" onclick="transferForgeItemBtn()">Transfer</button>
         <div style="
-        width: 3000px;
-        height: 3000px;
-        background-color: black;
-        position: absolute;
-        top: -500px;
-        left: -500px;
-        opacity: 0.75;
-        z-index: -1 !important;
-        ">
+            width: 3000px;
+            height: 3000px;
+            background-color: black;
+            position: absolute;
+            top: -500px;
+            left: -500px;
+            opacity: 0.75;
+            z-index: -1 !important;">
         </div>
       </div>
       <script>
@@ -277,6 +278,7 @@
           let thisItem = getItem(tx);
           document.getElementById("item_menu_name").innerHTML = thisItem.name;
           document.getElementById("item_menu_value").innerHTML = thisItem.value + " ZNZ";
+          document.getElementById("item_menu_image").innerHTML = '<div class="item_border_img" style="background-image: url(' + (thisItem.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + thisItem.image + '\'') + ');height: 275px !important;width: 220px !important; border-style: solid;"></div>';
           selectedItem = thisItem;
           document.getElementById("item_menu").style.display = "block";
         }
@@ -324,11 +326,22 @@
       </script>
       <div style="text-align: center;margin-top: 25px;">
         <h2>Create a Decentralized ZNZ-Backed Asset</h2>
-        <input class="address_input" placeholder="Name (E.g: The Grandmaster Scroll)" id="new_item_name" type="text">
-        <br>
-        <input class="amount_input" style="width: 35% !important;margin-top:5px;" placeholder="ZNZ Value (E.g: 15000)" id="new_item_value" type="number">
-        <br>
-        <input style="margin-top: 5px;margin-bottom: 15px;" class="btn" type="button" value="Craft" onclick="craftItem()">
+        <div id="new_item_preview">
+          <p>Card Preview</p>
+          <div class="item_border" style="margin-top: -5px;">
+            <b id="new_item_preview_name">The Grandma...</b>
+            <div id="new_item_preview_image" style="height: 100%;width: 100%;display: contents;"><div class="item_border_img" style="background-image: url('./gui/forge_unknown.png');"></div></div>
+            <b id="new_item_preview_value">15000 ZNZ</b>
+          </div>
+          <br>
+          <input class="address_input" placeholder="Name (E.g: The Grandmaster Scroll)" id="new_item_name" type="text">
+          <br>
+          <input class="address_input" placeholder="Image (E.g: https://i.imgur.com/yQuXuMa.gif)" id="new_item_image" type="text" style="margin-top: 5px;">
+          <br>
+          <input class="amount_input" style="width: 35% !important;margin-top:5px;" placeholder="ZNZ Value (E.g: 15000)" id="new_item_value" type="number">
+          <br>
+          <input style="margin-top: 5px;margin-bottom: 15px;" class="btn" type="button" value="Craft" onclick="craftItem()">
+        </div>
       </div>
 
       <!-- FORGE LIBRARY GOES BELOW -->
@@ -342,7 +355,12 @@
           function craftItem() {
             if (peers.length === 0) return;
             let nName = document.getElementById("new_item_name").value;
+            let nImage = document.getElementById("new_item_image").value;
             let nValue = Number(document.getElementById("new_item_value").value);
+
+            if (nImage === "") {
+              nImage = "default";
+            }
 
             let confirm = new ConfirmClass();
             confirm.show({
@@ -352,7 +370,7 @@
                 text: "Confirm",
                 callback: function(){
                   console.log('Clicked Confirm Button');
-                  craftForgeItem(nName, nValue);
+                  craftForgeItem(nName, nImage, nValue);
                 }
               }, {
                 text: 'Cancel',
@@ -363,10 +381,10 @@
             })
           }
 
-          function craftForgeItem (name, value) {
+          function craftForgeItem (name, image, value) {
               superagent
               .post('http://127.0.0.1:80/forge/create')
-              .send({ amount: value, name: name, auth: authToken})
+              .send({ name: name, image: image, amount: value, auth: authToken})
               .end((err, res) => {
                 console.info(res);
                 refreshInventory();
@@ -411,13 +429,13 @@
             getForgeInventory(addy).then(inv => {
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>' + inv.items[i].value + ' ZNZ</div>';
+                inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.items[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.items[i].image + '\'') + ');"></div>' + inv.items[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
-                inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
+                inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.pendingItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.pendingItems[i].image + '\'') + ');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.unsignedItems.length; i++) {
-                inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
+                inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.unsignedItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.unsignedItems[i].image + '\'') + ');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
               }
 
               let sortedItems = inv.items.concat(inv.pendingItems, inv.unsignedItems);
@@ -446,6 +464,21 @@
               document.getElementById("item_menu_transfer").style.display = "";
             } else {
               document.getElementById("item_menu_transfer").style.display = "none";
+            }
+
+            // Update card designer
+            if (document.getElementById("new_item_name").value.length >= 1 || document.getElementById("new_item_image").value.length >= 1 || Number(document.getElementById("new_item_value").value) > 0) {
+              document.getElementById("new_item_preview_name").innerHTML = (document.getElementById("new_item_name").value.length >= 1 ? truncateWithEllipses(document.getElementById("new_item_name").value, 12) : "The Grandma...");
+              document.getElementById("new_item_preview_value").innerHTML = (Number(document.getElementById("new_item_value").value) > 0 ? document.getElementById("new_item_value").value : "0") + " ZNZ";
+              if (document.getElementById("new_item_image").value.length > 1) {
+                document.getElementById("new_item_preview_image").innerHTML = '<div class="item_border_img" style="background-image: url(\'' + document.getElementById("new_item_image").value + '\');"></div>';
+              } else {
+                document.getElementById("new_item_preview_image").innerHTML = '<div class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>';
+              }
+            } else {
+              document.getElementById("new_item_preview_name").innerHTML = "The Grandma...";
+              document.getElementById("new_item_preview_image").innerHTML = '<div class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>';
+              document.getElementById("new_item_preview_value").innerHTML = "15000";
             }
           }, 1000);
 
