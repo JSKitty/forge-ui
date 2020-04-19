@@ -177,16 +177,19 @@
       <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome to ZENZO Forge</h2>
       <p id="loadingtext" style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;opacity: 0.5;">Loading...</p>
       <script>
-        setTimeout(function(){
+        let isRunningChecks = 0;
+        let isRunningChecker = setInterval(function(){
           if (isForgeRunning) {
             document.getElementById("loadingscreen").style.display = "none";
             document.getElementById("sidenav").style.display = "block";
+            clearInterval(isRunningChecker);
             openWallet();
-          } else {
+          } else if (isRunningChecks > 5) {
             document.getElementById("loadingscreen").style.display = "none";
             document.getElementById("welcome").style.display = "block";
           }
-        }, 2500);
+          isRunningChecks++;
+        }, 1000);
       </script>
     </div>
 
