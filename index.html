@@ -108,14 +108,27 @@
   }
 
   .item_border_img {
-    height:75%;
-    width:75%;
+    height: 75%;
+    width: 75%;
     background-color: #dddddd;
     margin-left: auto;
     margin-right: auto;
-    margin-top:10px;
-    margin-bottom:10px;
-    border-radius:12px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .avatar_border {
+    border-style: solid;
+    border-width: 2px;
+    border-radius: 1000px;
+    margin: 10px;
+    height: 100px;
+    width: 100px;
+    background-color: white;
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center;
@@ -484,6 +497,15 @@
               document.getElementById("new_item_preview_image").innerHTML = '<div class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>';
               document.getElementById("new_item_preview_value").innerHTML = "15000";
             }
+
+            // Update profile designer
+            if (document.getElementById("new_username").value.length >= 1 || document.getElementById("new_avatar").value.length >= 1) {
+              document.getElementById("new_profile_name").innerHTML = document.getElementById("new_username").value;
+              document.getElementById("new_profile_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'' + document.getElementById("new_avatar").value + '\');"></div>';
+            } else {
+              document.getElementById("new_profile_name").innerHTML = "Zentoshi Zakamoto";
+              document.getElementById("new_profile_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'./gui/forge_unknown.png\'); margin-left: auto; margin-right: auto;"></div>';
+            }
           }, 1000);
 
           refreshInventory();
@@ -503,17 +525,21 @@
       </div>
       <br>
       
-      <h2 class="border" style="margin-top: 30px;">Receive ZNZ</h2>
+      <h2 class="border" style="margin-top: 15px;">Receive ZNZ</h2>
       <input id="receive_address" readonly="readonly" type="text" value="" style="text-align: center; width: 315px; border-style: none; background-color: #8678dc4a; border-radius: 1000px;"><br>
 
-      <br><h2 class="border" style="margin-top: 30px;">Send ZNZ</h2>
+      <br><h2 class="border" style="margin-top: 15px;">Send ZNZ</h2>
       <input class="address_input" id="send_to" oninput="checkForProfile()" type="text" placeholder="ZNZ Address or Username">
       <input class="amount_input" id="send_amount" type="number" placeholder="Amount (ZNZ)">
       <br><br>
       <button class="btn" onclick="sendGuiTX()">Send</button>
       <br>
-      <p id="sending_to_parent" style="color:black; opacity: 0.5; display:none">(Sending to <b id="sending_to">???</b>)</p>
-
+      <div id="sending_to_parent" style="color:black; opacity: 0.5; display:none">
+        <div id="sending_avatar">
+          <div class="avatar_border" style="background-image: url('./gui/forge_unknown.png'); height: 15px; width: 15px;"></div>
+        </div>
+        <p style="margin-bottom: 15px; margin-top: 0px;">Sending to <b id="sending_to"></b></p>
+      </div>
       <script>
         function fetchBalances() {
           document.getElementById("receive_address").value = addy;
@@ -590,6 +616,7 @@
               toUsername = toUser.name.replace("zenzo.", "");
               isUsername = true;
               document.getElementById("sending_to").innerHTML = toAddress;
+              document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (toUser.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + toUser.image + '\'') + '); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
               document.getElementById("sending_to_parent").style.display = "block";
               hasValidReceiver = true;
               currentValidReceiverName = toUsername;
@@ -611,6 +638,7 @@
               toUsername = toUser.name.replace("zenzo.", "");
               isUsername = true;
               document.getElementById("sending_to").innerHTML = toUsername;
+              document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (toUser.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + toUser.image + '\'') + '); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
               document.getElementById("sending_to_parent").style.display = "block";
               hasValidReceiver = true;
               currentValidReceiverName = toUsername;
@@ -634,7 +662,17 @@
       <h3 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">What is a ZENZO Profile?</h3>
       <p>A ZENZO Profile is a decentralized ZFI (ZENZO Forge Item) that allocates a custom, human-readable username to a ZENZO address.<br>This allows you to have a completely trustless and immutable player profile, directly on the ZENZO Forge network.</p>
       <br><br>
-      <input class="address_input" id="new_username" type="text" placeholder="Zentoshi Zakamoto" style="text-align: center; width: 250px;"><br>
+      <div id="profile_preview">
+        <p>Profile Preview</p>
+        <div class="profile_border" style="margin-top: 5px;">
+          <b id="new_profile_name">Zentoshi Zakamoto</b>
+          <div id="new_profile_avatar">
+            <div class="avatar_border" style="background-image: url('./gui/forge_unknown.png'); margin-left: auto; margin-right: auto;"></div>
+          </div>
+        </div>
+      </div>
+      <input class="address_input" id="new_username" type="text" placeholder="Username (E.g: Zentoshi Zakamoto)" style="text-align: center; width: 250px;"><br>
+      <input class="address_input" id="new_avatar" type="text" placeholder="Image (E.g: https://i.imgur.com/yQuXuMa.gif)" style="text-align: center; width: 250px; margin-top: 5px"><br>
       <button style="margin-top: 25px;" class="btn" onclick="createUsername()">Create Profile</button>
 
       <script>
@@ -642,12 +680,13 @@
 
         async function createUsername() {
           const newUsername = document.getElementById("new_username").value;
+          const newAvatar = document.getElementById("new_avatar").value;
           let isUsernameFree = getProfile(newUsername, true);
           if (isUsernameFree === null) {
             try {
               let createdUser = await superagent
                 .post("http://127.0.0.1:80/forge/create")
-                .send({name: "zenzo." + newUsername, amount: 10, auth: authToken});
+                .send({name: "zenzo." + newUsername, image: newAvatar, amount: 10, auth: authToken});
               user_profile = createdUser.body;
               loadProfile();
               openProfile();
@@ -662,6 +701,9 @@
     </div>
     <div id="profile" style="height: 100vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
       <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">ZENZO Profile</h1>
+      <div id="welcome_avatar">
+        <div class="avatar_border" style="background-image: url('./gui/forge_unknown.png');"></div>
+      </div>
       <h3 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome, <b id="welcome_username"></b></h3>
 
       <script>
@@ -670,6 +712,7 @@
           if (userTmp !== null) {
             user_profile = userTmp;
             document.getElementById("welcome_username").innerHTML = user_profile.name.replace("zenzo.", "");
+            document.getElementById("welcome_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (user_profile.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + user_profile.image + '\'') + '); margin-left: auto; margin-right: auto;"></div>';
             return true;
           } else {
             return false;
