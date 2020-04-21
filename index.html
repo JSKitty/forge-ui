@@ -495,17 +495,20 @@
             } else {
               document.getElementById("new_item_preview_name").innerHTML = "The Grandma...";
               document.getElementById("new_item_preview_image").innerHTML = '<div class="item_border_img" style="background-image: url(\'./gui/forge_unknown.png\');"></div>';
-              document.getElementById("new_item_preview_value").innerHTML = "15000";
+              document.getElementById("new_item_preview_value").innerHTML = "15000 ZNZ";
             }
 
             // Update profile designer
-            if (document.getElementById("new_username").value.length >= 1 || document.getElementById("new_avatar").value.length >= 1) {
+            if (document.getElementById("new_username").value.length >= 1)
               document.getElementById("new_profile_name").innerHTML = document.getElementById("new_username").value;
-              document.getElementById("new_profile_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'' + document.getElementById("new_avatar").value + '\');"></div>';
-            } else {
+            else
               document.getElementById("new_profile_name").innerHTML = "Zentoshi Zakamoto";
+            
+            if (document.getElementById("new_avatar").value.length >= 1)
+              document.getElementById("new_profile_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'' + document.getElementById("new_avatar").value + '\'); margin-left: auto; margin-right: auto;"></div>';
+            else
               document.getElementById("new_profile_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'./gui/forge_unknown.png\'); margin-left: auto; margin-right: auto;"></div>';
-            }
+            
           }, 1000);
 
           refreshInventory();
@@ -536,7 +539,7 @@
       <br>
       <div id="sending_to_parent" style="color:black; opacity: 0.5; display:none">
         <div id="sending_avatar">
-          <div class="avatar_border" style="background-image: url('./gui/forge_unknown.png'); height: 15px; width: 15px;"></div>
+          <div class="avatar_border" style="background-image: url('./gui/forge_unknown.png'); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>
         </div>
         <p style="margin-bottom: 15px; margin-top: 0px;">Sending to <b id="sending_to"></b></p>
       </div>
@@ -702,7 +705,7 @@
     <div id="profile" style="height: 100vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
       <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">ZENZO Profile</h1>
       <div id="welcome_avatar">
-        <div class="avatar_border" style="background-image: url('./gui/forge_unknown.png');"></div>
+        <div class="avatar_border" style="background-image: url('./gui/forge_unknown.png'); margin-left: auto; margin-right: auto;"></div>
       </div>
       <h3 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome, <b id="welcome_username"></b></h3>
 
