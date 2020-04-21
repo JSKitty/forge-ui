@@ -633,6 +633,7 @@
               hasValidReceiver = false;
               currentValidReceiverName = "";
               console.info("Couldn't find user or address");
+              document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'./gui/forge_unknown.png\'); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
             }
           } else {
             let toUser = getProfile(to, true);
