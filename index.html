@@ -411,7 +411,7 @@
           function smeltForgeItem (tx) {
             let nItem = getItem(tx);
             zenzo.call("signmessage", addy, "smelt_" + nItem.tx).then(sig => {
-              smeltItem(tx, sig).then(a => {closeItemMenu()});
+              smeltItem({tx: tx, address: nItem.address}, sig).then(a => {closeItemMenu()});
             });
           }
 
