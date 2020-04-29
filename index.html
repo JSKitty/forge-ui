@@ -408,10 +408,10 @@
               });
           }
 
-          function smeltForgeItem (hash) {
-            let nItem = getItem(hash);
+          function smeltForgeItem (tx) {
+            let nItem = getItem(tx);
             zenzo.call("signmessage", addy, "smelt_" + nItem.tx).then(sig => {
-              smeltItem(hash, sig).then(a => {closeItemMenu()});
+              smeltItem(tx, sig).then(a => {closeItemMenu()});
             });
           }
 
