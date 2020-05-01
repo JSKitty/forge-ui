@@ -266,6 +266,9 @@
 
       <h1 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">ZENZO Forge Inventory</h1>
       <br>
+      <div id="inventory_search" style="text-align: center; display: none">
+        <input class="address_input" placeholder="Search for TX, Name or DApp" id="inventory_search_input" type="text" style="margin-bottom: 8px;">
+      </div>
       <div style="width: 100%; min-height: 35%; max-height: 62%; overflow-x: hidden; overflow-y: scroll; background-color: #e2e2e2;">
         <span id="items"></span>
       </div>
@@ -366,9 +369,12 @@
       <!-- FORGE LIBRARY GOES ABOVE -->
 
       <script>
+          itemCount = 0;
+
           let hasValidReceiver = false;
           let currentValidReceiver = "";
           let currentValidReceiverName = "";
+          let currentInventorySearch = "";
           function craftItem() {
             if (peers.length === 0) return;
             let nName = document.getElementById("new_item_name").value;
@@ -444,25 +450,33 @@
 
           function refreshInventory() {
             getForgeInventory(addy).then(inv => {
+              itemCount = 0;
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.items[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.items[i].image + '\'') + ');"></div>' + inv.items[i].value + ' ZNZ</div>';
+                if (matchesInventorySearch(inv.items[i].tx) || matchesInventorySearch(inv.items[i].name)) inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.items[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.items[i].image + '\'') + ');"></div>' + inv.items[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
-                inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.pendingItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.pendingItems[i].image + '\'') + ');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
+                if (matchesInventorySearch(inv.pendingItems[i].tx) || matchesInventorySearch(inv.pendingItems[i].name)) inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.pendingItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.pendingItems[i].image + '\'') + ');"></div>' + inv.pendingItems[i].value + ' ZNZ</div>';
               }
               for (let i=0; i<inv.unsignedItems.length; i++) {
-                inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.unsignedItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.unsignedItems[i].image + '\'') + ');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
+                if (matchesInventorySearch(inv.unsignedItems[i].tx) || matchesInventorySearch(inv.unsignedItems[i].name)) inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.unsignedItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.unsignedItems[i].image + '\'') + ');"></div>' + inv.unsignedItems[i].value + ' ZNZ</div>';
               }
 
               let sortedItems = inv.items.concat(inv.pendingItems, inv.unsignedItems);
               sortedItems.sort(function(a, b){return b.value-a.value});
 
               for (let i=0; i<sortedItems.length; i++) {
-                itemHTML += sortedItems[i].html;
+                if (!_.isNil(sortedItems[i].html))
+                  itemHTML += sortedItems[i].html;
+                itemCount++;
               }
               document.getElementById("items").innerHTML = itemHTML;
             });
+          }
+
+          function matchesInventorySearch(i) {
+            if (i.toLowerCase().includes(currentInventorySearch) || currentInventorySearch === "") return true;
+            return false;
           }
 
 
@@ -509,7 +523,17 @@
             else
               document.getElementById("new_profile_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'./gui/forge_unknown.png\'); margin-left: auto; margin-right: auto;"></div>';
             
-          }, 1000);
+            // Update inventory search
+            if (itemCount > 6) {
+              document.getElementById("inventory_search").style.display = "";
+              if (document.getElementById("inventory_search_input").value.length >= 1)
+                currentInventorySearch = document.getElementById("inventory_search_input").value.toLowerCase();
+              else
+                currentInventorySearch = "";
+            } else {
+              document.getElementById("inventory_search").style.display = "none";
+            }
+          }, 500);
 
           refreshInventory();
       </script>
