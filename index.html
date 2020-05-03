@@ -437,13 +437,13 @@
               let res = await superagent.post('http://127.0.0.1:80/forge/items');
               res = JSON.parse(res.text);
               for (let i=0; i<res.items.length; i++) {
-                if (res.items[i].address === addr && !res.items[i].name.startsWith("zenzo.")) inv.items.push(res.items[i]);
+                if (res.items[i] && res.items[i].address === addr && !res.items[i].name.startsWith("zenzo.")) inv.items.push(res.items[i]);
               }
               for (let i=0; i<res.pendingItems.length; i++) {
-                if (res.pendingItems[i].address === addr && !res.pendingItems[i].name.startsWith("zenzo.")) inv.pendingItems.push(res.pendingItems[i]);
+                if (res.pendingItems[i] && res.pendingItems[i].address === addr && !res.pendingItems[i].name.startsWith("zenzo.")) inv.pendingItems.push(res.pendingItems[i]);
               }
               for (let i=0; i<res.pendingItems.length; i++) {
-                if (res.unsignedItems[i].address === addr && !res.unsignedItems[i].name.startsWith("zenzo.")) inv.unsignedItems.push(res.unsignedItems[i]);
+                if (res.unsignedItems[i] && res.unsignedItems[i].address === addr && !res.unsignedItems[i].name.startsWith("zenzo.")) inv.unsignedItems.push(res.unsignedItems[i]);
               }
               return inv;
           }
