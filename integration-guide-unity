@@ -44,6 +44,5 @@
 Now craft an item called `peg.sword` in your Forge and launch the game. The `swordObj` prefab should spawn in-game. That is your ZFI (blockchain-based item).
 
 ## Congratulations! 
-###
 
 *For any questions and troubleshooting, join the official [ZENZO Discord](https://discord.gg/MBXPSDH) and navigate to the **#:fire:-forge** channel.
