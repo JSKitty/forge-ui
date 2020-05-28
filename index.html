@@ -596,11 +596,11 @@
               else
                 document.getElementById("new_profile_name").innerHTML = "Zentoshi Zakamoto";
               
-              if (document.getElementById("new_avatar").value.length >= 1)
-                profileImage.innerHTML = '<div class="avatar_border" style="background-image: url(\'' + profileImage.value + '\'); margin-left: auto; margin-right: auto;"></div>';
+              if (profileImage.value.length >= 10 && profileImage.value.length <= 150)
+                document.getElementById("new_profile_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'' + profileImage.value + '\'); margin-left: auto; margin-right: auto;"></div>';
               else
-                profileImage.innerHTML = '<div class="avatar_border" style="background-image: url(\'./gui/forge_unknown.png\'); margin-left: auto; margin-right: auto;"></div>';
-            
+                document.getElementById("new_profile_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'./gui/forge_unknown.png\'); margin-left: auto; margin-right: auto;"></div>';
+
               if (isWalletLocked) setWarning("profile_designer_warning", "Wallet must be unlocked for crafting!", true);
               else if (availableBalance <= 10) setWarning("profile_designer_warning", "A minimum of >10 ZNZ is required to create a profile!", true);
               else if (profileName.value.length < 1 || profileName.value.length > 50) setWarning("profile_designer_warning", "Name must be between 1 and 50 chars", true);
