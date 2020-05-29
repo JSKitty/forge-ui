@@ -439,7 +439,7 @@
 
           function craftForgeItem (name, image, value) {
               superagent
-              .post('http://127.0.0.1:80/forge/create')
+              .post('http://127.0.0.1:' + forgePort + '/forge/create')
               .send({ name: name, image: image, amount: value, auth: authToken})
               .end((err, res) => {
                 console.info(res);
@@ -456,7 +456,7 @@
 
           function transferForgeItem (item) {
               superagent
-              .post('http://127.0.0.1:80/forge/transfer')
+              .post('http://127.0.0.1:' + forgePort + '/forge/transfer')
               .send({ item: item, to: currentValidReceiver, auth: authToken})
               .end((err, res) => {
                 closeItemMenu()
@@ -467,7 +467,7 @@
 
           async function getForgeInventory (addr) {
               let inv = {items: [], pendingItems: [], unsignedItems: []};
-              let res = await superagent.post('http://127.0.0.1:80/forge/items');
+              let res = await superagent.post('http://127.0.0.1:' + forgePort + '/forge/items');
               res = JSON.parse(res.text);
               for (let i=0; i<res.items.length; i++) {
                 if (res.items[i] && res.items[i].address === addr && !res.items[i].name.startsWith("zenzo.")) inv.items.push(res.items[i]);
@@ -820,7 +820,7 @@
           if (isUsernameFree === null) {
             try {
               let createdUser = await superagent
-                .post("http://127.0.0.1:80/forge/create")
+                .post("http://127.0.0.1:" + forgePort + "/forge/create")
                 .send({name: "zenzo." + newUsername, image: newAvatar, amount: 10, auth: authToken});
               user_profile = createdUser.body;
               loadProfile();
