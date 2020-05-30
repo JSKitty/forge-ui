@@ -29,26 +29,26 @@ For example, using the `/forge/smelt` endpoint requires an **"auth"** and a **"h
 
 ## Endpoints list
 
-:unlock:**Public APIs (No Auth Required)**
+### :unlock:**Public APIs (No Auth Required)**
 
-### ZENZO Forge Items 
-(Returns a list of **all** known items on the network)
+#### ZENZO Forge Items 
+> Returns a list of **all** known items on the network
 - Endpoint: `/forge/items`
 
-### ZENZO Forge Inventory 
-(Returns a list of items owned by the local node. e.g., the node's inventory)
+#### ZENZO Forge Inventory 
+> Returns a list of items owned by the local node. e.g., the node's inventory
 - Endpoint: `/forge/inventory`
 
-### ZENZO Forge Profiles 
-(Returns a list of **all** known ZENZO Profiles on the network)
+#### ZENZO Forge Profiles 
+> Returns a list of **all** known ZENZO Profiles on the network
 - Endpoint: `/forge/profiles`
 
-### ZENZO Forge Profile 
-(Returns a single profile by its **Username** or **Address**)
+#### ZENZO Forge Profile 
+> Returns a single profile by its **Username** or **Address**
 - Endpoint: `/forge/profile`
 - Body key "name": (text, the name or address of the profile to search for)
 
-:lock:**Private APIs (Auth Required)**
+### :lock:**Private APIs (Auth Required)**
 
 :warning:**WARNING: Only use these locally! If your auth-key is found publicly, your funds are at severe risk.** 
 
