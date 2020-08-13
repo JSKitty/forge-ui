@@ -220,13 +220,21 @@
         let isRunningChecks = 0;
         let isRunningChecker = setInterval(function(){
           if (isForgeRunning) {
-            document.getElementById("loadingscreen").style.display = "none";
-            document.getElementById("sidenav").style.display = "block";
             clearInterval(isRunningChecker);
-            openWallet();
+            // Pre-load balances and wallet info (If not already loaded) before opening the wallet screen
+            if (availableBalance <= 0)
+              fetchBalances();
+            setTimeout(function() {
+              document.getElementById("welcome").style.display = "none";
+              document.getElementById("loadingscreen").style.display = "none";
+              document.getElementById("sidenav").style.display = "block";
+              openWallet();
+              clearInterval(isRunningChecker);
+            }, 1000);
           } else if (isRunningChecks > 5) {
-            document.getElementById("loadingscreen").style.display = "none";
             document.getElementById("welcome").style.display = "block";
+            document.getElementById("loadingscreen").style.display = "none";
+            document.getElementById("sidenav").style.display = "none";
           }
           isRunningChecks++;
         }, 1000);
@@ -265,8 +273,12 @@
                     safeMode = false;
                     document.getElementById("welcome").style.display = "none";
                     document.getElementById("sidenav").style.display = "block";
-                    openWallet();
-                    clearInterval(checkDaemonInterval);
+                    // Pre-load balances and wallet info before opening the wallet screen
+                    fetchBalances();
+                    setTimeout(function() {
+                      openWallet();
+                      clearInterval(checkDaemonInterval);
+                    }, 1000);
                   } else {
                     generateForgeAddress();
                   }
@@ -656,8 +668,8 @@
       <script>
         function fetchBalances() {
           document.getElementById("receive_address").value = addy;
-          zenzo.call("getwalletinfo").then(RPCbalances => {
-            document.getElementById("total_znz").innerHTML = Number(RPCbalances.balance.toFixed(2)).toLocaleString();
+          zenzo.call("getwalletinfo").then(RPCinfo => {
+            document.getElementById("total_znz").innerHTML = Number(RPCinfo.balance.toFixed(2)).toLocaleString();
             let lockedBalance = 0;
             for (let i=0; i<items.length; i++) {
                 if (items[i].address === addy) lockedBalance += items[i].value;
@@ -666,14 +678,19 @@
                 if (itemsToValidate[i].address === addy) lockedBalance += itemsToValidate[i].value;
             }
             lockedBalance = formatNum(lockedBalance);
-            availableBalance = formatNum(RPCbalances.balance - lockedBalance);
+            availableBalance = formatNum(RPCinfo.balance - lockedBalance);
             document.getElementById("available_znz").innerHTML = Number(availableBalance.toFixed(2)).toLocaleString();
             document.getElementById("locked_znz").innerHTML = Number(lockedBalance.toFixed(2)).toLocaleString();
 
-            // Also update unlocked status
-            zenzo.call("getstakingstatus").then(RPCLocked => {
-              isWalletLocked = !RPCLocked.walletunlocked;
+            // Also update unlocked status by testing if we can sign a message
+            zenzo.call("signmessage", addy, "test").then(tMsg => {
+              if (!_.isNil(tMsg) && tMsg.length > 10) isWalletLocked = false;
+              else isWalletLocked = true;
+            }).catch(e => {
+              isWalletLocked = true
             });
+          }).catch(e => {
+            console.log("GUI: " + e);
           });
         }
 
@@ -788,7 +805,7 @@
           currentValidReceiver = toAddress;
         }
 
-        setInterval(fetchBalances, 1000);
+        setInterval(fetchBalances, 5000);
       </script>
     </div>
     <div id="new_profile" style="height: 100vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
