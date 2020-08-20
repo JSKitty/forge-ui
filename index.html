@@ -412,6 +412,7 @@
           let itemCount = 0;
           let availableBalance = 0;
           let isWalletLocked = false;
+          let isWalletLockCapable = false; // Assume false until the node is unable to sign... could be improved
           let canCraftItem = false;
           let canSendTransaction = false;
 
@@ -638,7 +639,9 @@
     </div>
     <div id="wallet" style="height: 80vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
       <div style="width: 100%;">
-        <h1 class="border" style="text-align: center;font-family: helvetica;">ZENZO Wallet</h1>
+        <h1 class="border" style="text-align: center;font-family: helvetica;">ZENZO Wallet
+          <p id="lock_status" class="btn" onclick="lockWallet()" style="font-size: 15px;position: absolute;top: 26px;right: 11%;width: 10%;display:none;">Unlocked</p>
+        </h1>
       </div>
       <p style="text-align: center;font-family: helvetica;">Peers: <b id="peerCount">Offline (No peers connected)</b></p>
       <div class="tiny-border" style="margin-top: 0;background-color: #eaeaea;">
@@ -687,10 +690,39 @@
               if (!_.isNil(tMsg) && tMsg.length > 10) isWalletLocked = false;
               else isWalletLocked = true;
             }).catch(e => {
-              isWalletLocked = true
+              isWalletLocked = true;
             });
+
+            // Update GUI lock status
+            lockWalletGuiUpdate();
           }).catch(e => {
             console.log("GUI: " + e);
+          });
+        }
+
+        // Update the GUI lock status
+        function lockWalletGuiUpdate(forceLock = false) {
+          if (forceLock) isWalletLocked = forceLock;
+          if (isWalletLocked) isWalletLockCapable = true;
+          if (isWalletLockCapable) {
+            console.log("locked!");
+            let docLockStatus = document.getElementById("lock_status");
+            docLockStatus.innerHTML = isWalletLocked ? "Locked" : "Unlocked";
+            docLockStatus.style.display = "block";
+            docLockStatus.style.cursor = isWalletLocked ? "not-allowed" : "pointer";
+          }
+        }
+
+        // Lock the connected ZENZO Core daemon
+        function lockWallet() {
+          if (isWalletLocked) return;
+          // Not clear how exactly to interpret "walletlock" responses, try multiple methods, /shrug
+          zenzo.call("walletlock").then(locked => {
+            lockWalletGuiUpdate(true);
+            console.log("GUI: Locked the ZENZO Core daemon, password required for further actions!");
+          }).catch(e => {
+            lockWalletGuiUpdate(true);
+            console.log("GUI: Locked the ZENZO Core daemon, password required for further actions!");
           });
         }
 
