@@ -197,7 +197,6 @@
 
       function openProfile() {
         loadProfile().then(hasProfile => {
-          console.info(hasProfile)
           if (hasProfile) {
             document.getElementById("wallet").style.display = "none";
             document.getElementById("inventory").style.display = "none";
@@ -472,7 +471,7 @@
               .post('http://127.0.0.1:' + forgePort + '/forge/transfer')
               .send({ item: item, to: currentValidReceiver, auth: authToken})
               .end((err, res) => {
-                closeItemMenu()
+                closeItemMenu();
                 console.info(res);
                 refreshInventory();
               });
@@ -705,7 +704,6 @@
           if (forceLock) isWalletLocked = forceLock;
           if (isWalletLocked) isWalletLockCapable = true;
           if (isWalletLockCapable) {
-            console.log("locked!");
             let docLockStatus = document.getElementById("lock_status");
             docLockStatus.innerHTML = isWalletLocked ? "Locked" : "Unlocked";
             docLockStatus.style.display = "block";
