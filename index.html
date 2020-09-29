@@ -175,39 +175,35 @@
     <script src="./gui/dialog-component.js"></script>
 
     <div id="sidenav" class="sidenav" style="display: none;">
-      <a onclick="openProfile();" style="cursor: pointer;">Profile</a>
-      <a onclick="openWallet();" style="cursor: pointer;">Wallet</a>
+      <a onclick="openProfile();"   style="cursor: pointer;">Profile</a>
+      <a onclick="openWallet();"    style="cursor: pointer;">Wallet</a>
       <a onclick="openInventory();" style="cursor: pointer;">Inventory</a>
     </div>
 
     <script>
+      function closeAllWindows() {
+        document.getElementById("wallet").style.display =        "none";
+        document.getElementById("inventory").style.display =     "none";
+        document.getElementById("new_profile").style.display =   "none";
+        document.getElementById("profile").style.display =       "none";
+      }
       function openWallet() {
+        closeAllWindows();
         document.getElementById("wallet").style.display = "block";
-        document.getElementById("inventory").style.display = "none";
-        document.getElementById("new_profile").style.display = "none";
-        document.getElementById("profile").style.display = "none";
       }
 
       function openInventory() {
-        document.getElementById("wallet").style.display = "none";
+        closeAllWindows();
         document.getElementById("inventory").style.display = "block";
-        document.getElementById("new_profile").style.display = "none";
-        document.getElementById("profile").style.display = "none";
       }
 
       function openProfile() {
         loadProfile().then(hasProfile => {
-          if (hasProfile) {
-            document.getElementById("wallet").style.display = "none";
-            document.getElementById("inventory").style.display = "none";
-            document.getElementById("new_profile").style.display = "none";
+          closeAllWindows();
+          if (hasProfile)
             document.getElementById("profile").style.display = "block";
-          } else {
-            document.getElementById("wallet").style.display = "none";
-            document.getElementById("inventory").style.display = "none";
+          else
             document.getElementById("new_profile").style.display = "block";
-            document.getElementById("profile").style.display = "none";
-          }
         })
       }
     </script>
