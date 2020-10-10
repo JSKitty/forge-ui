@@ -233,10 +233,18 @@
               openWallet();
               clearInterval(isRunningChecker);
             }, 1000);
-          } else if (isRunningChecks > 5) {
-            document.getElementById("welcome").style.display = "block";
-            document.getElementById("loadingscreen").style.display = "none";
-            document.getElementById("sidenav").style.display = "none";
+          } else {
+            if (isRunningChecks > 5) {
+              document.getElementById("welcome").style.display = "block";
+              document.getElementById("loadingscreen").style.display = "none";
+              document.getElementById("sidenav").style.display = "none";
+            }
+            // Double-check the daemon
+            isDaemonOnline().then(nOnline => {
+              if (nOnline) {
+                startForge();
+              }
+            });
           }
           isRunningChecks++;
         }, 1000);
