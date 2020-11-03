@@ -290,7 +290,7 @@
                       clearInterval(checkDaemonInterval);
                     }, 1000);
                   } else {
-                    generateForgeAddress();
+                    selectOperatorAddress();
                   }
                 }
               })
@@ -681,6 +681,8 @@
       <script>
         function fetchBalances() {
           document.getElementById("receive_address").value = addy;
+          // Cancel any wallet-dependent calls if the Forge is not ready yet
+          if (!isForgeRunning) return;
           zenzo.call("getwalletinfo").then(RPCinfo => {
             document.getElementById("total_znz").innerHTML = Number(RPCinfo.balance.toFixed(2)).toLocaleString();
             let lockedBalance = 0;
