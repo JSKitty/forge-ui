@@ -26,7 +26,7 @@
 
 1. Download the ZENZO Forge zip, and unzip the folder:
 
-- Windows: https://mega.nz/#!ZHhAVAJR!4b5jlr-ISyONw8jzxpTzHagmJyjHULzDj0U2wvPsEn0
+- Windows: https://www.dropbox.com/s/jx07y63bdce4zl9/ZENZO%20Forge-win32-x64.zip?dl=1
 
 2. Run the ZENZO Forge and follow the setup guide, you may run the "Automated Setup" or do a manual setup
 
