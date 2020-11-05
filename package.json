@@ -32,7 +32,6 @@
     "nanoid": "^2.1.8",
     "request": "^2.88.2",
     "request-progress": "^3.0.0",
-    "superagent": "^5.1.3",
-    "x11-hash-js": "^1.0.1"
+    "superagent": "^5.1.3"
   }
 }
