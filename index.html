@@ -354,7 +354,7 @@
         function closeItemMenu() {
           document.getElementById("item_menu").style.display = "none";
         }
-        function smeltForgeItemBtn() {
+        function smeltForgeItemBtn(profileItem = false) {
           let confirm = new ConfirmClass();
           confirm.show({
             title: 'Confirm Smelt',
@@ -363,7 +363,7 @@
               text: "Confirm",
               callback: function(){
                 console.log('Clicked Confirm Button');
-                smeltForgeItem(selectedItem.tx);
+                smeltForgeItem(selectedItem.tx, profileItem);
               }
             }, {
               text: 'Cancel',
@@ -470,10 +470,14 @@
               });
           }
 
-          function smeltForgeItem (tx) {
+          function smeltForgeItem (tx, profileItem) {
             let nItem = getItem(tx);
             zenzo.call("signmessage", addy, "smelt_" + nItem.tx).then(sig => {
-              smeltItem({tx: tx, address: nItem.address}, sig).then(a => {closeItemMenu()});
+              smeltItem({tx: tx, address: nItem.address}, sig).then(a => {
+                closeItemMenu();
+                // If this was a profile, refresh the profile screen
+                openProfile();
+              });
             });
           }
 
@@ -488,18 +492,26 @@
               });
           }
 
+          // Returns a list of all operator-owned Forge items
           async function getForgeInventory (addr) {
               let inv = {items: [], pendingItems: [], unsignedItems: []};
               let res = await superagent.post('http://127.0.0.1:' + forgePort + '/forge/items');
               res = JSON.parse(res.text);
+              // We exclude profiles here, as they are managed within the Profile Manager of the GUI
               for (let i=0; i<res.items.length; i++) {
-                if (res.items[i] && res.items[i].address === addr && !res.items[i].name.startsWith("zenzo.")) inv.items.push(res.items[i]);
+                if (res.items[i].address !== addr) continue;
+                if (isProfile(res.items[i])) continue;
+                inv.items.push(res.items[i]);
               }
               for (let i=0; i<res.pendingItems.length; i++) {
-                if (res.pendingItems[i] && res.pendingItems[i].address === addr && !res.pendingItems[i].name.startsWith("zenzo.")) inv.pendingItems.push(res.pendingItems[i]);
+                if (res.pendingItems[i].address !== addr) continue;
+                if (isProfile(res.pendingItems[i])) continue;
+                inv.pendingItems.push(res.pendingItems[i]);
               }
-              for (let i=0; i<res.pendingItems.length; i++) {
-                if (res.unsignedItems[i] && res.unsignedItems[i].address === addr && !res.unsignedItems[i].name.startsWith("zenzo.")) inv.unsignedItems.push(res.unsignedItems[i]);
+              for (let i=0; i<res.unsignedItems.length; i++) {
+                if (res.unsignedItems[i].address !== addr) continue;
+                if (isProfile(res.unsignedItems[i])) continue;
+                inv.unsignedItems.push(res.unsignedItems[i]);
               }
               return inv;
           }
@@ -628,7 +640,7 @@
               else if (availableBalance <= 10) setWarning("profile_designer_warning", "A minimum of >10 ZNZ is required to create a profile!", true);
               else if (profileName.value.length < 1 || profileName.value.length > 50) setWarning("profile_designer_warning", "Name must be between 1 and 50 chars", true);
               else if (profileImage.value.length < 10 || profileImage.value.length > 150) setWarning("profile_designer_warning", "Avatar URL must be between 10 and 150 chars", true);
-              else if (getProfile(profileName.value, true)) setWarning("profile_designer_warning", "Username already exists!", true);
+              else if (getProfileByName(profileName.value, true)) setWarning("profile_designer_warning", "Username already exists!", true);
               else setText("profile_designer_warning", "");
             }
 
@@ -747,10 +759,10 @@
 
           let isUsername = false;
           if (to.length !== 34) {
-            let toUser = getProfile(to, true);
+            let toUser = getProfileByName(to, true);
             if (toUser !== null) {
               toAddress = toUser.address;
-              toUsername = toUser.name.replace("zenzo.", "");
+              toUsername = toUser.name;
               isUsername = true;
             } else {
               // No address, no username; error out
@@ -799,10 +811,10 @@
 
           let isUsername = false;
           if (to.length !== 34) {
-            let toUser = getProfile(to, true);
+            let toUser = getProfileByName(to, true);
             if (toUser !== null) {
               toAddress = toUser.address;
-              toUsername = toUser.name.replace("zenzo.", "");
+              toUsername = toUser.name;
               isUsername = true;
               document.getElementById("sending_to").innerHTML = toAddress;
               document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (toUser.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + toUser.image + '\'') + '); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
@@ -824,10 +836,11 @@
               document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(\'./gui/forge_unknown.png\'); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
             }
           } else {
-            let toUser = getProfile(to, true);
-            if (toUser !== null) {
+            let toUser = getProfilesByAddress(to, true);
+            if (toUser.length > 0) {
+              toUser = toUser[0];
               toAddress = toUser.address;
-              toUsername = toUser.name.replace("zenzo.", "");
+              toUsername = toUser.name;
               isUsername = true;
               document.getElementById("sending_to").innerHTML = toUsername;
               document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (toUser.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + toUser.image + '\'') + '); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
@@ -876,12 +889,20 @@
         async function createUsername() {
           const newUsername = document.getElementById("new_username").value;
           const newAvatar = document.getElementById("new_avatar").value;
-          let isUsernameFree = getProfile(newUsername, true);
+          let isUsernameFree = getProfileByName(newUsername, true);
           if (isUsernameFree === null) {
             try {
               let createdUser = await superagent
                 .post("http://127.0.0.1:" + forgePort + "/forge/create")
-                .send({name: "zenzo." + newUsername, image: newAvatar, amount: 10, auth: authToken});
+                .send({
+                  name: newUsername,
+                  image: newAvatar,
+                  amount: 10,
+                  contracts: {
+                    validation: script.getStandards().ZFI_1.scripts.validation.structure.replace("{native_input}", util.hexEncode(newUsername))
+                  },
+                  auth: authToken
+                });
               user_profile = createdUser.body;
               loadProfile();
               openProfile();
@@ -893,6 +914,13 @@
             console.warn("Profile creation rejected, username already taken");
           }
         }
+
+        function smeltUsername() {
+            // Select the profile ZFI
+            selectedItem = user_profile;
+            // Open the Smelting dialog
+            smeltForgeItemBtn(true);
+        }
       </script>
     </div>
     <div id="profile" style="height: 100vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
@@ -901,13 +929,15 @@
         <div class="avatar_border" style="background-image: url('./gui/forge_unknown.png'); margin-left: auto; margin-right: auto;"></div>
       </div>
       <h3 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome, <b id="welcome_username"></b></h3>
+      <button style="margin-top: 25px;" class="btn" onclick="smeltUsername()">Smelt Profile</button>
 
       <script>
         async function loadProfile () {
-          let userTmp = getProfile(addy, true);
-          if (userTmp !== null) {
-            user_profile = userTmp;
-            document.getElementById("welcome_username").innerHTML = user_profile.name.replace("zenzo.", "");
+          // Currently, only one profile per-address is supported on the frontend
+          let userTmp = getProfilesByAddress(addy, true);
+          if (userTmp.length > 0) {
+            user_profile = userTmp[0];
+            document.getElementById("welcome_username").innerHTML = user_profile.name;
             document.getElementById("welcome_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (user_profile.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + user_profile.image + '\'') + '); margin-left: auto; margin-right: auto;"></div>';
             return true;
           } else {
