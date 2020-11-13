@@ -182,6 +182,7 @@
     </div>
 
     <script>
+      'use strict';
       function closeAllWindows() {
         document.getElementById("wallet").style.display =        "none";
         document.getElementById("inventory").style.display =     "none";
@@ -219,6 +220,7 @@
       <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome to ZENZO Forge</h2>
       <p id="loadingtext" style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;opacity: 0.5;">Loading...</p>
       <script>
+        'use strict';
         let isRunningChecks = 0;
         let isRunningChecker = setInterval(function(){
           if (isForgeRunning) {
@@ -266,6 +268,7 @@
       </p>
 
       <script>
+        'use strict';
         function manualSetup() {
           safeMode = true;
           isForgeRunning = false;
@@ -342,6 +345,7 @@
         </div>
       </div>
       <script>
+        'use strict';
         let selectedItem = null;
         function openItemMenu(tx) {
           let thisItem = getItem(tx);
@@ -419,6 +423,7 @@
       <!-- FORGE LIBRARY GOES ABOVE -->
 
       <script>
+          'use strict';
           let itemCount = 0;
           let availableBalance = 0;
           let isWalletLocked = false;
@@ -691,6 +696,7 @@
         <p style="margin-bottom: 15px; margin-top: 0px;">Sending to <b id="sending_to"></b></p>
       </div>
       <script>
+        'use strict';
         function fetchBalances() {
           document.getElementById("receive_address").value = addy;
           // Cancel any wallet-dependent calls if the Forge is not ready yet
@@ -884,6 +890,7 @@
       <button style="margin-top: 25px;" class="btn" onclick="createUsername()">Create Profile</button>
 
       <script>
+        'use strict';
         let user_profile = null;
 
         async function createUsername() {
@@ -932,6 +939,7 @@
       <button style="margin-top: 25px;" class="btn" onclick="smeltUsername()">Smelt Profile</button>
 
       <script>
+        'use strict';
         async function loadProfile () {
           // Currently, only one profile per-address is supported on the frontend
           let userTmp = getProfilesByAddress(addy, true);
@@ -988,6 +996,7 @@
       </div>
 
       <script>
+        'use strict';
         let nCachedGamesList = "";
         setInterval(() => {
           let nGameListHTML = "";
