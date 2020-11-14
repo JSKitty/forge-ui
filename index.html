@@ -317,7 +317,10 @@
       display: none;">
 
       <h1 class="border" style="text-align: center;font-family: helvetica;margin-top: 0;margin-top: 25px;">ZENZO Forge Inventory</h1>
-      <br>
+      <div id="inventory_warning_banner" style="width: 100%; height: max-content; overflow-x: hidden; overflow-y: hidden; display: none; text-align: center; font-family: arial; margin-bottom: 1vh;">
+        <h2 style="color: crimson; margin-top: 1vh;"><b>Alert!</b></h2>
+        <p id="inventory_warning"></p>
+      </div>
       <div id="inventory_search" style="text-align: center; display: none">
         <input class="address_input" placeholder="Search for TX, Name or DApp" id="inventory_search_input" type="text" style="margin-bottom: 8px;">
       </div>
@@ -425,6 +428,7 @@
       <script>
           'use strict';
           let itemCount = 0;
+          let ourUnsignedItems = 0;
           let availableBalance = 0;
           let isWalletLocked = false;
           let isWalletLockCapable = false; // Assume false until the node is unable to sign... could be improved
@@ -518,6 +522,8 @@
                 if (isProfile(res.unsignedItems[i])) continue;
                 inv.unsignedItems.push(res.unsignedItems[i]);
               }
+              // Count our unsigned items so we can alert the user about them
+              ourUnsignedItems = inv.unsignedItems.length;
               return inv;
           }
 
@@ -529,10 +535,18 @@
                 if (matchesInventorySearch(inv.items[i].tx) || matchesInventorySearch(inv.items[i].name)) inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + truncateWithEllipses(inv.items[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.items[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.items[i].image + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.items[i].value.toFixed(2)).toPrecision() + ' ZNZ</div></div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
-                if (matchesInventorySearch(inv.pendingItems[i].tx) || matchesInventorySearch(inv.pendingItems[i].name)) inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.pendingItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.pendingItems[i].image + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.pendingItems[i].value.toFixed(2)).toPrecision() + ' ZNZ</div>';
+                if (matchesInventorySearch(inv.pendingItems[i].tx) || matchesInventorySearch(inv.pendingItems[i].name)) inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.pendingItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.pendingItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.pendingItems[i].image + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.pendingItems[i].value.toFixed(2)).toPrecision() + ' ZNZ</div></div>';
               }
               for (let i=0; i<inv.unsignedItems.length; i++) {
-                if (matchesInventorySearch(inv.unsignedItems[i].tx) || matchesInventorySearch(inv.unsignedItems[i].name)) inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.unsignedItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.unsignedItems[i].image + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.unsignedItems[i].value.toFixed(2)).toPrecision() + ' ZNZ</div>';
+                if (matchesInventorySearch(inv.unsignedItems[i].tx) || matchesInventorySearch(inv.unsignedItems[i].name)) inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + truncateWithEllipses(inv.unsignedItems[i].name, 12) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.unsignedItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.unsignedItems[i].image + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.unsignedItems[i].value.toFixed(2)).toPrecision() + ' ZNZ</div></div>';
+              }
+
+              // If the wallet is locked and we have unsigned items, alert the user, we cannot sign items while locked
+              if (ourUnsignedItems > 0 && isWalletLocked) {
+                document.getElementById("inventory_warning").innerHTML = "You've been sent " + ourUnsignedItems + " item" + (ourUnsignedItems === 1 ? "" : "s") + "!<br>Please <b>unlock your wallet</b> to accept " + (ourUnsignedItems === 1 ? "it" : "them") + "!";
+                document.getElementById("inventory_warning_banner").style.display = "block";
+              } else {
+                document.getElementById("inventory_warning_banner").style.display = "none";
               }
 
               let sortedItems = inv.items.concat(inv.pendingItems, inv.unsignedItems);
@@ -956,6 +970,7 @@
             document.getElementById("welcome_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (user_profile.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + user_profile.image + '\'') + '); margin-left: auto; margin-right: auto;"></div>';
             return true;
           } else {
+            user_profile = null;
             return false;
           }
         }
