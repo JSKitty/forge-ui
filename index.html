@@ -899,6 +899,13 @@
           let isUsernameFree = getProfileByName(newUsername, true);
           if (isUsernameFree === null) {
             try {
+              // Grab the script template (ZFI-1)
+              let scriptTemplate = script.getStandards().ZFI_1.scripts.validation.structure;
+              // Grab OP_codes to replace 'fill in' our native input
+              const opcodes = script.getOpcodes();
+              // Encode our username in marked HEX then insert it into the script
+              const encodedScript = scriptTemplate.replace(opcodes.NATIVE.STRING, util.hexEncode(newUsername, true));
+              // Craft and broadcast the profile!
               let createdUser = await superagent
                 .post("http://127.0.0.1:" + forgePort + "/forge/create")
                 .send({
@@ -906,7 +913,7 @@
                   image: newAvatar,
                   amount: 10,
                   contracts: {
-                    validation: script.getStandards().ZFI_1.scripts.validation.structure.replace("{native_input}", util.hexEncode(newUsername))
+                    validation: encodedScript
                   },
                   auth: authToken
                 });
