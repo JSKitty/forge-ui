@@ -660,7 +660,7 @@
               if (isWalletLocked) setWarning("profile_designer_warning", "Wallet must be unlocked for crafting!", true);
               else if (availableBalance <= 10) setWarning("profile_designer_warning", "A minimum of >10 ZNZ is required to create a profile!", true);
               else if (profileName.value.length < 1 || profileName.value.length > 50) setWarning("profile_designer_warning", "Name must be between 1 and 50 chars", true);
-              else if (profileImage.value.length < 10 || profileImage.value.length > 150) setWarning("profile_designer_warning", "Avatar URL must be between 10 and 150 chars", true);
+              else if (profileImage.value !== "" && (profileImage.value.length < 10 || profileImage.value.length > 150)) setWarning("profile_designer_warning", "Avatar URL must be between 10 and 150 chars", true);
               else if (getProfileByName(profileName.value, true)) setWarning("profile_designer_warning", "Username already exists!", true);
               else setText("profile_designer_warning", "");
             }
@@ -911,7 +911,9 @@
 
         async function createUsername() {
           const newUsername = document.getElementById("new_username").value;
-          const newAvatar = document.getElementById("new_avatar").value;
+          let newAvatar = document.getElementById("new_avatar").value;
+          // If the Avatar is empty, we use the "default" signal
+          if (newAvatar === "") newAvatar = "default";
           let isUsernameFree = getProfileByName(newUsername, true);
           if (isUsernameFree === null) {
             try {
