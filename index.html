@@ -485,7 +485,9 @@
               smeltItem({tx: tx, address: nItem.address}, sig).then(a => {
                 closeItemMenu();
                 // If this was a profile, refresh the profile screen
-                openProfile();
+                if (profileItem) {
+                  openProfile();
+                }
               });
             });
           }
