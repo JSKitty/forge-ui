@@ -506,8 +506,7 @@
           // Returns a list of all operator-owned Forge items
           async function getForgeInventory (addr) {
               let inv = {items: [], pendingItems: [], unsignedItems: []};
-              let res = await superagent.post('http://127.0.0.1:' + forgePort + '/forge/items');
-              res = JSON.parse(res.text);
+              let res = _.cloneDeep({items: items, pendingItems: itemsToValidate, unsignedItems: unsignedItems});
               // We exclude profiles here, as they are managed within the Profile Manager of the GUI
               for (let i=0; i<res.items.length; i++) {
                 if (res.items[i].address !== addr) continue;
@@ -676,8 +675,6 @@
               document.getElementById("inventory_search").style.display = "none";
             }
           }, 500);
-
-          refreshInventory();
       </script>
     </div>
     <div id="wallet" style="height: 80vh; background-color: white; margin-left: 160px; display: none; text-align: center;">
