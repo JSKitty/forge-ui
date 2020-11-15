@@ -30,6 +30,7 @@
     "express": "^4.17.1",
     "lodash": "^4.17.15",
     "nanoid": "^2.1.8",
+    "regedit": "^3.0.3",
     "request": "^2.88.2",
     "request-progress": "^3.0.0",
     "superagent": "^5.1.3"
