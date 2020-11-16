@@ -441,7 +441,7 @@
           let currentValidReceiverName = "";
           let currentInventorySearch = "";
           function craftItem() {
-            if (peers.length === 0 || !canCraftItem) return;
+            if (net.getPeers().length === 0 || !canCraftItem) return;
             let nName = document.getElementById("new_item_name").value;
             let nImage = document.getElementById("new_item_image").value;
             let nValue = Number(document.getElementById("new_item_value").value);
@@ -571,10 +571,10 @@
           setInterval(function() {
             // Update peer UI
             if (safeMode) return setWarning("peerCount", "Offline (Missing RPC Connection)<br>Please start ZENZO Core, then restart the Forge.");
-            if (peers.length === 0) {
+            if (net.getPeers().length === 0) {
               setWarning("peerCount", "Offline (No peers connected)");
             } else {
-              document.getElementById("peerCount").innerHTML = peers.length;
+              document.getElementById("peerCount").innerHTML = net.getPeers().length;
               refreshInventory();
             }
 
