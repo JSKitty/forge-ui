@@ -506,7 +506,7 @@
           // Returns a list of all operator-owned Forge items
           async function getForgeInventory (addr) {
               let inv = {items: [], pendingItems: [], unsignedItems: []};
-              let res = _.cloneDeep({items: items, pendingItems: itemsToValidate, unsignedItems: unsignedItems});
+              let res = _.cloneDeep({items: getValidItems(), pendingItems: getPendingItems(), unsignedItems: getUnsignedItems()});
               // We exclude profiles here, as they are managed within the Profile Manager of the GUI
               for (let i=0; i<res.items.length; i++) {
                 if (res.items[i].strAddress !== addr) continue;
@@ -717,11 +717,13 @@
           zenzo.call("getwalletinfo").then(RPCinfo => {
             document.getElementById("total_znz").innerHTML = Number(RPCinfo.balance.toFixed(2)).toLocaleString();
             let lockedBalance = 0;
-            for (let i=0; i<items.length; i++) {
-                if (items[i].strAddress === addy) lockedBalance += items[i].nValue;
+            let localValidItems = getValidItems();
+            let localPendingItems = getPendingItems();
+            for (let i=0; i<localValidItems.length; i++) {
+                if (localValidItems[i].strAddress === addy) lockedBalance += localValidItems[i].nValue;
             }
-            for (let i=0; i<itemsToValidate.length; i++) {
-                if (itemsToValidate[i].strAddress === addy) lockedBalance += itemsToValidate[i].nValue;
+            for (let i=0; i<localPendingItems.length; i++) {
+                if (localPendingItems[i].strAddress === addy) lockedBalance += localPendingItems[i].nValue;
             }
             lockedBalance = formatNum(lockedBalance);
             availableBalance = formatNum(RPCinfo.balance - lockedBalance);
