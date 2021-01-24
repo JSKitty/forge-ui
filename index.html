@@ -482,7 +482,7 @@
           function smeltForgeItem (tx, profileItem) {
             let nItem = getItem(tx);
             zenzo.call("signmessage", addy, "smelt_" + (nItem.strTx || nitem.tx)).then(sig => {
-              smeltItem({tx: tx, address: (nItem.strAddress || nItem.address)}, sig).then(a => {
+              smeltItem({strTx: tx, strAddress: (nItem.strAddress || nItem.address)}, sig).then(a => {
                 closeItemMenu();
                 // If this was a profile, refresh the profile screen
                 if (profileItem) {
