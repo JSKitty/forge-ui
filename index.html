@@ -179,6 +179,9 @@
       <a onclick="openWallet();"    style="cursor: pointer;">Wallet</a>
       <a onclick="openInventory();" style="cursor: pointer;">Inventory</a>
       <a onclick="openGames();"     style="cursor: pointer;">Games</a>
+      <div style="text-align: center;width: 100%;height: fit-content;position: absolute;bottom: 48px;left: -4px;">
+        <a id="sidebar_version" style="position:relative; font-size:large; cursor:default;">---</a>
+      </div>
     </div>
 
     <script>
@@ -225,6 +228,8 @@
         let isRunningChecker = setInterval(function(){
           if (isForgeRunning) {
             clearInterval(isRunningChecker);
+            // Update version display from disk
+            document.getElementById("sidebar_version").innerHTML = "v" + npm_package.version;
             // Pre-load balances and wallet info (If not already loaded) before opening the wallet screen
             if (availableBalance <= 0)
               fetchBalances();
