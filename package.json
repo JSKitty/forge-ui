@@ -20,7 +20,7 @@
   "author": "GitHub",
   "license": "CC0-1.0",
   "devDependencies": {
-    "electron": "^7.1.7"
+    "electron": "^9.4.0"
   },
   "dependencies": {
     "bitcoin-rpc-promise": "^2.1.6",
