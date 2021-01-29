@@ -722,7 +722,12 @@
           zenzo.call("getwalletinfo").then(RPCinfo => {
             zenzo.call("listmasternodeconf").then(MNs => {
               document.getElementById("total_znz").innerHTML = Number(RPCinfo.balance.toFixed(2)).toLocaleString();
-              let lockedBalance = formatNum(MNs.length * 15000);
+              let lockedBalance = 0;
+              for (const MN of MNs) {
+                // Ignore MNs which are inside ZFIs
+                if (_.isNil(getItem(MN.txHash, true, true)))
+                  lockedBalance += 15000;
+              }
               let localValidItems = getValidItems();
               let localPendingItems = getPendingItems();
               for (let i=0; i<localValidItems.length; i++) {
