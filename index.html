@@ -259,26 +259,26 @@
     </div>
 
     <div id="welcome" style="display: none;">
-      <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome to ZENZO Forge</h2>
+      <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome to the ZENZO Forge</h2>
       <p id="introtext" style="
         margin-left: 100px;
         margin-right: 100px;
         text-align: center;">
-        Please select how you'd like to setup your wallet. For a frictionless and quick setup, select "Automatic Setup".
+        <b>If you're a new user:</b>
+        <br>
+        Select 'setup' to begin your journey!
         <br>
         <br>
-        If you'd like to mess with some files and dive in the dirt, select "Manual Setup".
-      <input class="btn" type="button" value="Manual Setup" onclick="manualSetup()">
-      <input class="btn" type="button" value="Automatic Setup" onclick="setupForgeGui()">
+        <b>If you've already setup the Forge:</b>
+        <br>
+        Start up ZENZO Core and I will login automatically when a connection is established with your Core wallet!
+        <br>
+        <br>
+        <input class="btn" type="button" value="Setup" onclick="setupForgeGui()">
       </p>
 
       <script>
         'use strict';
-        function manualSetup() {
-          safeMode = true;
-          isForgeRunning = false;
-          document.getElementById("introtext").innerHTML = "Step-by-step guide on setting up ZENZO Forge<br><br><b>1. </b> Setup the Forge config, the directory of the config should be:<br><code>" + appdata + 'data/config.json</code><br><br>An example of the Forge config contents can be found below:<br><div style="text-align: left;"><code>{<br>&nbsp;&nbsp;&nbsp;&nbsp;"wallet": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"datadir":"' + appdataZC + '",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"user":"user",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"pass":"forgepass",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"port":26211,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"address":"your_znz_address"<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>}</code></div><br>Change the "address" field with an address from your ZENZO Core.<br><br><b>2. </b>Setup the ZENZO Core config at the below directory:<br><code>' + appdataZC + 'zenzo.conf</code><br><br>An example of the ZENZO Core config contents can be found below:<br><div style="text-align: left;"><code>txindex=1<br>rpcuser=user<br>rpcpassword=forgepass<br>listen=1<br>server=1</code></div><br><br><b>3. </b>Restart ZENZO Core, wait for it to load, then restart ZENZO Forge.';
-        }
 
         function setupForgeGui() {
           setupForge(null).then(done => {
