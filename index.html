@@ -720,31 +720,35 @@
           // Cancel any wallet-dependent calls if the Forge is not ready yet
           if (!isForgeRunning) return;
           zenzo.call("getwalletinfo").then(RPCinfo => {
-            document.getElementById("total_znz").innerHTML = Number(RPCinfo.balance.toFixed(2)).toLocaleString();
-            let lockedBalance = 0;
-            let localValidItems = getValidItems();
-            let localPendingItems = getPendingItems();
-            for (let i=0; i<localValidItems.length; i++) {
-                if (localValidItems[i].strAddress === addy) lockedBalance += localValidItems[i].nValue;
-            }
-            for (let i=0; i<localPendingItems.length; i++) {
-                if (localPendingItems[i].strAddress === addy) lockedBalance += localPendingItems[i].nValue;
-            }
-            lockedBalance = formatNum(lockedBalance);
-            availableBalance = formatNum(RPCinfo.balance - lockedBalance);
-            document.getElementById("available_znz").innerHTML = Number(availableBalance.toFixed(2)).toLocaleString();
-            document.getElementById("locked_znz").innerHTML = Number(lockedBalance.toFixed(2)).toLocaleString();
+            zenzo.call("listmasternodeconf").then(MNs => {
+              document.getElementById("total_znz").innerHTML = Number(RPCinfo.balance.toFixed(2)).toLocaleString();
+              let lockedBalance = formatNum(MNs.length * 15000);
+              let localValidItems = getValidItems();
+              let localPendingItems = getPendingItems();
+              for (let i=0; i<localValidItems.length; i++) {
+                  if (localValidItems[i].strAddress === addy) lockedBalance += localValidItems[i].nValue;
+              }
+              for (let i=0; i<localPendingItems.length; i++) {
+                  if (localPendingItems[i].strAddress === addy) lockedBalance += localPendingItems[i].nValue;
+              }
+              lockedBalance = formatNum(lockedBalance);
+              availableBalance = formatNum(RPCinfo.balance - lockedBalance);
+              document.getElementById("available_znz").innerHTML = Number(availableBalance.toFixed(2)).toLocaleString();
+              document.getElementById("locked_znz").innerHTML = Number(lockedBalance.toFixed(2)).toLocaleString();
 
-            // Also update unlocked status by testing if we can sign a message
-            zenzo.call("signmessage", addy, "test").then(tMsg => {
-              if (!_.isNil(tMsg) && tMsg.length > 10) isWalletLocked = false;
-              else isWalletLocked = true;
+              // Also update unlocked status by testing if we can sign a message
+              zenzo.call("signmessage", addy, "test").then(tMsg => {
+                if (!_.isNil(tMsg) && tMsg.length > 10) isWalletLocked = false;
+                else isWalletLocked = true;
+              }).catch(e => {
+                isWalletLocked = true;
+              });
+
+              // Update GUI lock status
+              lockWalletGuiUpdate();
             }).catch(e => {
-              isWalletLocked = true;
+              console.log("GUI: " + e);
             });
-
-            // Update GUI lock status
-            lockWalletGuiUpdate();
           }).catch(e => {
             console.log("GUI: " + e);
           });
