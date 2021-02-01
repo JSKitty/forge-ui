@@ -179,6 +179,9 @@
       <a onclick="openWallet();"    style="cursor: pointer;">Wallet</a>
       <a onclick="openInventory();" style="cursor: pointer;">Inventory</a>
       <a onclick="openGames();"     style="cursor: pointer;">Games</a>
+      <div style="text-align: center;width: 100%;height: fit-content;position: absolute;bottom: 48px;left: -4px;">
+        <a id="sidebar_version" style="position:relative; font-size:large; cursor:default;">---</a>
+      </div>
     </div>
 
     <script>
@@ -225,6 +228,8 @@
         let isRunningChecker = setInterval(function(){
           if (isForgeRunning) {
             clearInterval(isRunningChecker);
+            // Update version display from disk
+            document.getElementById("sidebar_version").innerHTML = "v" + npm_package.version;
             // Pre-load balances and wallet info (If not already loaded) before opening the wallet screen
             if (availableBalance <= 0)
               fetchBalances();
@@ -254,26 +259,26 @@
     </div>
 
     <div id="welcome" style="display: none;">
-      <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome to ZENZO Forge</h2>
+      <h2 style="text-align: center;font-family: helvetica;margin-top: 0;padding-top: 25px;">Welcome to the ZENZO Forge</h2>
       <p id="introtext" style="
         margin-left: 100px;
         margin-right: 100px;
         text-align: center;">
-        Please select how you'd like to setup your wallet. For a frictionless and quick setup, select "Automatic Setup".
+        <b>If you're a new user:</b>
+        <br>
+        Select 'setup' to begin your journey!
         <br>
         <br>
-        If you'd like to mess with some files and dive in the dirt, select "Manual Setup".
-      <input class="btn" type="button" value="Manual Setup" onclick="manualSetup()">
-      <input class="btn" type="button" value="Automatic Setup" onclick="setupForgeGui()">
+        <b>If you've already setup the Forge:</b>
+        <br>
+        Start up ZENZO Core and I will login automatically when a connection is established with your Core wallet!
+        <br>
+        <br>
+        <input class="btn" type="button" value="Setup" onclick="setupForgeGui()">
       </p>
 
       <script>
         'use strict';
-        function manualSetup() {
-          safeMode = true;
-          isForgeRunning = false;
-          document.getElementById("introtext").innerHTML = "Step-by-step guide on setting up ZENZO Forge<br><br><b>1. </b> Setup the Forge config, the directory of the config should be:<br><code>" + appdata + 'data/config.json</code><br><br>An example of the Forge config contents can be found below:<br><div style="text-align: left;"><code>{<br>&nbsp;&nbsp;&nbsp;&nbsp;"wallet": {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"datadir":"' + appdataZC + '",&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"user":"user",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"pass":"forgepass",<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"port":26211,<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"address":"your_znz_address"<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>}</code></div><br>Change the "address" field with an address from your ZENZO Core.<br><br><b>2. </b>Setup the ZENZO Core config at the below directory:<br><code>' + appdataZC + 'zenzo.conf</code><br><br>An example of the ZENZO Core config contents can be found below:<br><div style="text-align: left;"><code>txindex=1<br>rpcuser=user<br>rpcpassword=forgepass<br>listen=1<br>server=1</code></div><br><br><b>3. </b>Restart ZENZO Core, wait for it to load, then restart ZENZO Forge.';
-        }
 
         function setupForgeGui() {
           setupForge(null).then(done => {
@@ -352,9 +357,9 @@
         let selectedItem = null;
         function openItemMenu(tx) {
           let thisItem = getItem(tx);
-          document.getElementById("item_menu_name").innerHTML = util.sanitizeString(thisItem.name);
-          document.getElementById("item_menu_value").innerHTML = thisItem.value + " ZNZ";
-          document.getElementById("item_menu_image").innerHTML = '<div class="item_border_img" style="background-image: url(' + (thisItem.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + thisItem.image + '\'') + ');height: 275px !important;width: 220px !important; border-style: solid;"></div>';
+          document.getElementById("item_menu_name").innerHTML = util.sanitizeString(thisItem.strName || thisItem.name);
+          document.getElementById("item_menu_value").innerHTML = (thisItem.nValue || thisItem.value) + " ZNZ";
+          document.getElementById("item_menu_image").innerHTML = '<div class="item_border_img" style="background-image: url(' + ((thisItem.strImage || thisItem.image) === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + (thisItem.strImage || thisItem.image) + '\'') + ');height: 275px !important;width: 220px !important; border-style: solid;"></div>';
           selectedItem = thisItem;
           document.getElementById("item_menu").style.display = "block";
         }
@@ -365,12 +370,12 @@
           let confirm = new ConfirmClass();
           confirm.show({
             title: 'Confirm Smelt',
-            content: 'Are you sure you want to smelt "' + util.sanitizeString(selectedItem.name) + '"? Once smelted, this item will be destroyed forever and you will receive a total of ' + selectedItem.value + ' ZNZ',
+            content: 'Are you sure you want to smelt "' + util.sanitizeString(selectedItem.strName || selectedItem.name) + '"? Once smelted, this item will be destroyed forever and you will receive a total of ' + (selectedItem.nValue || selectedItem.value) + ' ZNZ',
             btns: [{
               text: "Confirm",
               callback: function(){
                 console.log('Clicked Confirm Button');
-                smeltForgeItem(selectedItem.tx, profileItem);
+                smeltForgeItem(selectedItem.strTx || selectedItem.tx, profileItem);
               }
             }, {
               text: 'Cancel',
@@ -384,12 +389,12 @@
           let confirm = new ConfirmClass();
           confirm.show({
             title: 'Confirm Transfer',
-            content: 'Are you sure you want to send "' + util.sanitizeString(selectedItem.name) + '" to ' + (currentValidReceiverName === '' ? '"' + currentValidReceiver + '"' : '"' + util.sanitizeString(currentValidReceiverName) + '"') + '?',
+            content: 'Are you sure you want to send "' + util.sanitizeString(selectedItem.strName || selectedItem.name) + '" to ' + (currentValidReceiverName === '' ? '"' + currentValidReceiver + '"' : '"' + util.sanitizeString(currentValidReceiverName) + '"') + '?',
             btns: [{
               text: "Confirm",
               callback: function(){
                 console.log('Clicked Confirm Button');
-                transferForgeItem(selectedItem.tx);
+                transferForgeItem(selectedItem.strTx || selectedItem.tx);
               }
             }, {
               text: 'Cancel',
@@ -481,8 +486,8 @@
 
           function smeltForgeItem (tx, profileItem) {
             let nItem = getItem(tx);
-            zenzo.call("signmessage", addy, "smelt_" + nItem.tx).then(sig => {
-              smeltItem({tx: tx, address: nItem.address}, sig).then(a => {
+            zenzo.call("signmessage", addy, "smelt_" + (nItem.strTx || nitem.tx)).then(sig => {
+              smeltItem({strTx: tx, strAddress: (nItem.strAddress || nItem.address)}, sig).then(a => {
                 closeItemMenu();
                 // If this was a profile, refresh the profile screen
                 if (profileItem) {
@@ -506,20 +511,20 @@
           // Returns a list of all operator-owned Forge items
           async function getForgeInventory (addr) {
               let inv = {items: [], pendingItems: [], unsignedItems: []};
-              let res = _.cloneDeep({items: items, pendingItems: itemsToValidate, unsignedItems: unsignedItems});
+              let res = _.cloneDeep({items: getValidItems(), pendingItems: getPendingItems(), unsignedItems: getUnsignedItems()});
               // We exclude profiles here, as they are managed within the Profile Manager of the GUI
               for (let i=0; i<res.items.length; i++) {
-                if (res.items[i].address !== addr) continue;
+                if (res.items[i].strAddress !== addr) continue;
                 if (isProfile(res.items[i])) continue;
                 inv.items.push(res.items[i]);
               }
               for (let i=0; i<res.pendingItems.length; i++) {
-                if (res.pendingItems[i].address !== addr) continue;
+                if (res.pendingItems[i].strAddress !== addr) continue;
                 if (isProfile(res.pendingItems[i])) continue;
                 inv.pendingItems.push(res.pendingItems[i]);
               }
               for (let i=0; i<res.unsignedItems.length; i++) {
-                if (res.unsignedItems[i].address !== addr) continue;
+                if (res.unsignedItems[i].strAddress !== addr) continue;
                 if (isProfile(res.unsignedItems[i])) continue;
                 inv.unsignedItems.push(res.unsignedItems[i]);
               }
@@ -533,13 +538,13 @@
               itemCount = 0;
               let itemHTML = "<br>";
               for (let i=0; i<inv.items.length; i++) {
-                if (matchesInventorySearch(inv.items[i].tx) || matchesInventorySearch(inv.items[i].name)) inv.items[i].html = '<div onclick="openItemMenu(\'' + inv.items[i].tx + '\')" class="item_border">' + util.sanitizeString(truncateWithEllipses(inv.items[i].name, 12)) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.items[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.items[i].image + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.items[i].value.toFixed(2)).toPrecision() + ' ZNZ</div></div>';
+                if (matchesInventorySearch(inv.items[i].strTx) || matchesInventorySearch(inv.items[i].strName || inv.items[i].name)) inv.items[i].html = '<div onclick="openItemMenu(\'' + (inv.items[i].strTx || inv.items[i].tx) + '\')" class="item_border">' + util.sanitizeString(truncateWithEllipses(inv.items[i].strName || inv.items[i].name, 12)) + '<div id="image" class="item_border_img" style="background-image: url(' + ((inv.items[i].strImage || inv.items[i].image) === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + (inv.items[i].strImage || inv.items[i].image) + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number((inv.items[i].nValue || inv.items[i].value).toFixed(2)).toPrecision() + ' ZNZ</div></div>';
               }
               for (let i=0; i<inv.pendingItems.length; i++) {
-                if (matchesInventorySearch(inv.pendingItems[i].tx) || matchesInventorySearch(inv.pendingItems[i].name)) inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + util.sanitizeString(truncateWithEllipses(inv.pendingItems[i].name, 12)) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.pendingItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.pendingItems[i].image + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.pendingItems[i].value.toFixed(2)).toPrecision() + ' ZNZ</div></div>';
+                if (matchesInventorySearch(inv.pendingItems[i].strTx) || matchesInventorySearch(inv.pendingItems[i].strName)) inv.pendingItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + util.sanitizeString(truncateWithEllipses(inv.pendingItems[i].strName, 12)) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.pendingItems[i].strImage === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.pendingItems[i].strImage + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.pendingItems[i].nValue.toFixed(2)).toPrecision() + ' ZNZ</div></div>';
               }
               for (let i=0; i<inv.unsignedItems.length; i++) {
-                if (matchesInventorySearch(inv.unsignedItems[i].tx) || matchesInventorySearch(inv.unsignedItems[i].name)) inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + util.sanitizeString(truncateWithEllipses(inv.unsignedItems[i].name, 12)) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.unsignedItems[i].image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.unsignedItems[i].image + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.unsignedItems[i].value.toFixed(2)).toPrecision() + ' ZNZ</div></div>';
+                if (matchesInventorySearch(inv.unsignedItems[i].strTx) || matchesInventorySearch(inv.unsignedItems[i].strName)) inv.unsignedItems[i].html = '<div class="item_border" style="opacity: 0.5 !important; cursor:initial;">' + util.sanitizeString(truncateWithEllipses(inv.unsignedItems[i].strName, 12)) + '<div id="image" class="item_border_img" style="background-image: url(' + (inv.unsignedItems[i].strImage === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + inv.unsignedItems[i].strImage + '\'') + ');"></div><div class="icon" style="width: 160px;"><img src="./gui/znz.svg"> ' + Number(inv.unsignedItems[i].nValue.toFixed(2)).toPrecision() + ' ZNZ</div></div>';
               }
 
               // If the wallet is locked and we have unsigned items, alert the user, we cannot sign items while locked
@@ -551,7 +556,7 @@
               }
 
               let sortedItems = inv.items.concat(inv.pendingItems, inv.unsignedItems);
-              sortedItems.sort(function(a, b){return b.value-a.value});
+              sortedItems.sort(function(a, b){return b.nValue-a.nValue});
 
               for (let i=0; i<sortedItems.length; i++) {
                 if (!_.isNil(sortedItems[i].html))
@@ -715,29 +720,40 @@
           // Cancel any wallet-dependent calls if the Forge is not ready yet
           if (!isForgeRunning) return;
           zenzo.call("getwalletinfo").then(RPCinfo => {
-            document.getElementById("total_znz").innerHTML = Number(RPCinfo.balance.toFixed(2)).toLocaleString();
-            let lockedBalance = 0;
-            for (let i=0; i<items.length; i++) {
-                if (items[i].address === addy) lockedBalance += items[i].value;
-            }
-            for (let i=0; i<itemsToValidate.length; i++) {
-                if (itemsToValidate[i].address === addy) lockedBalance += itemsToValidate[i].value;
-            }
-            lockedBalance = formatNum(lockedBalance);
-            availableBalance = formatNum(RPCinfo.balance - lockedBalance);
-            document.getElementById("available_znz").innerHTML = Number(availableBalance.toFixed(2)).toLocaleString();
-            document.getElementById("locked_znz").innerHTML = Number(lockedBalance.toFixed(2)).toLocaleString();
+            zenzo.call("listmasternodeconf").then(MNs => {
+              document.getElementById("total_znz").innerHTML = Number(RPCinfo.balance.toFixed(2)).toLocaleString();
+              let lockedBalance = 0;
+              for (const MN of MNs) {
+                // Ignore MNs which are inside ZFIs
+                if (_.isNil(getItem(MN.txHash, true, true)))
+                  lockedBalance += 15000;
+              }
+              let localValidItems = getValidItems();
+              let localPendingItems = getPendingItems();
+              for (let i=0; i<localValidItems.length; i++) {
+                  if (localValidItems[i].strAddress === addy) lockedBalance += localValidItems[i].nValue;
+              }
+              for (let i=0; i<localPendingItems.length; i++) {
+                  if (localPendingItems[i].strAddress === addy) lockedBalance += localPendingItems[i].nValue;
+              }
+              lockedBalance = formatNum(lockedBalance);
+              availableBalance = formatNum(RPCinfo.balance - lockedBalance);
+              document.getElementById("available_znz").innerHTML = Number(availableBalance.toFixed(2)).toLocaleString();
+              document.getElementById("locked_znz").innerHTML = Number(lockedBalance.toFixed(2)).toLocaleString();
 
-            // Also update unlocked status by testing if we can sign a message
-            zenzo.call("signmessage", addy, "test").then(tMsg => {
-              if (!_.isNil(tMsg) && tMsg.length > 10) isWalletLocked = false;
-              else isWalletLocked = true;
+              // Also update unlocked status by testing if we can sign a message
+              zenzo.call("signmessage", addy, "test").then(tMsg => {
+                if (!_.isNil(tMsg) && tMsg.length > 10) isWalletLocked = false;
+                else isWalletLocked = true;
+              }).catch(e => {
+                isWalletLocked = true;
+              });
+
+              // Update GUI lock status
+              lockWalletGuiUpdate();
             }).catch(e => {
-              isWalletLocked = true;
+              console.log("GUI: " + e);
             });
-
-            // Update GUI lock status
-            lockWalletGuiUpdate();
           }).catch(e => {
             console.log("GUI: " + e);
           });
@@ -780,8 +796,8 @@
           if (to.length !== 34) {
             let toUser = getProfileByName(to, true);
             if (toUser !== null) {
-              toAddress = toUser.address;
-              toUsername = toUser.name;
+              toAddress = toUser.strAddress || toUser.address;
+              toUsername = toUser.strName || toUser.name;
               isUsername = true;
             } else {
               // No address, no username; error out
@@ -832,11 +848,11 @@
           if (to.length !== 34) {
             let toUser = getProfileByName(to, true);
             if (toUser !== null) {
-              toAddress = toUser.address;
-              toUsername = toUser.name;
+              toAddress = toUser.strAddress || toUser.address;
+              toUsername = toUser.strName || toUser.name;
               isUsername = true;
               document.getElementById("sending_to").innerHTML = toAddress;
-              document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (toUser.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + toUser.image + '\'') + '); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
+              document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + ((toUser.strImage || toUser.image) === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + (toUser.strImage || toUser.image) + '\'') + '); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
               document.getElementById("sending_to_parent").style.display = "block";
               hasValidReceiver = true;
               currentValidReceiverName = toUsername;
@@ -858,11 +874,11 @@
             let toUser = getProfilesByAddress(to, true);
             if (toUser.length > 0) {
               toUser = toUser[0];
-              toAddress = toUser.address;
-              toUsername = toUser.name;
+              toAddress = toUser.strAddress || toUser.address;
+              toUsername = toUser.strName || toUser.name;
               isUsername = true;
               document.getElementById("sending_to").innerHTML = util.sanitizeString(toUsername);
-              document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (toUser.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + toUser.image + '\'') + '); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
+              document.getElementById("sending_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + ((toUser.strImage || toUser.image) === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + (toUser.strImage || toUser.image) + '\'') + '); height: 50px; width: 50px; display: inline-block; border-width: 1px; margin: 0px; margin-top: 20px;"></div>';
               document.getElementById("sending_to_parent").style.display = "block";
               hasValidReceiver = true;
               currentValidReceiverName = toUsername;
@@ -968,8 +984,8 @@
           let userTmp = getProfilesByAddress(addy, true);
           if (userTmp.length > 0) {
             user_profile = userTmp[0];
-            document.getElementById("welcome_username").innerHTML = util.sanitizeString(user_profile.name);
-            document.getElementById("welcome_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + (user_profile.image === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + user_profile.image + '\'') + '); margin-left: auto; margin-right: auto;"></div>';
+            document.getElementById("welcome_username").innerHTML = util.sanitizeString(user_profile.strName || user_profile.name);
+            document.getElementById("welcome_avatar").innerHTML = '<div class="avatar_border" style="background-image: url(' + ((user_profile.strImage || user_profile.image) === "default" ? '\'./gui/forge_unknown.png\'' : '\'' + (user_profile.strImage || user_profile.image) + '\'') + '); margin-left: auto; margin-right: auto;"></div>';
             return true;
           } else {
             user_profile = null;
