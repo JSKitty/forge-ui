@@ -1037,6 +1037,27 @@
 
       <script>
         'use strict';
+
+        function uninstallDialog(game) {
+          let uninstall_confirm = new ConfirmClass();
+          uninstall_confirm.show({
+            title: 'Confirm Uninstall',
+            content: 'Are you sure you want to uninstall ' + game + '?',
+            btns: [{
+              text: "Confirm",
+              callback: function(){
+                console.log('Clicked Uninstall Confirm Button');
+                games_manager.uninstallGame(game);
+              }
+            }, {
+              text: 'Cancel',
+              callback: function(){
+                console.log('Clicked Uninstall Cancel Button');
+              }
+            }]
+          });
+        }
+
         let nCachedGamesList = "";
         setInterval(() => {
           let nGameListHTML = "";
@@ -1044,28 +1065,38 @@
           let downloadingGame = null;
           // Compute the Games List HTML
           games_manager.games.forEach(nGame => {
-            let nButtonStatus = "";
+            let nButtonPrimaryStatus = "";
+            let nButtonSecondaryStatus = "";
+            let duelButtons = false;
             if (nGame.db.downloading) {
               // Downloading
               if (nGame.db.progress > 0)
-                nButtonStatus = Math.floor(nGame.db.progress) + "%";
+                nButtonPrimaryStatus = Math.floor(nGame.db.progress) + "%";
               else
-                nButtonStatus = "0%";
+                nButtonPrimaryStatus = "0%";
               isDownloading = true;
               downloadingGame = nGame;
             } else
             if (nGame.db.installing) {
               // Installing
-              nButtonStatus = "Finishing...";
+              nButtonPrimaryStatus = "Finishing...";
             } else
             if (nGame.db.installed) {
               // Play
-              nButtonStatus = "Play";
+              nButtonPrimaryStatus   = "Play";
+              nButtonSecondaryStatus = "Uninstall";
+              duelButtons = true;
             } else {
               // Install
-              nButtonStatus = "Install";
+              nButtonPrimaryStatus = "Install";
             }
-            nGameListHTML += '<div style="height: 20%;width: 90%;background-color: lightgrey;margin-left: auto;margin-right: auto;border-radius: 5px;display: flow-root;margin-bottom: 25px;"><div style="width: 15vh;height: -webkit-fill-available;background-image: url(' + nGame.images.cover + ');background-repeat: no-repeat;background-size: contain;border-top-left-radius: 5px;border-bottom-left-radius: 5px;float: left;"></div><div style="position: relative;float: left;left: 1%;height: -webkit-fill-available;"><h3 style="font-weight: 700;font-size: large;position: absolute;width: 300px;text-align: center;top: 31%;">' + nGame.name + '</h3></div><div style="float: right;height: -webkit-fill-available;"><button class="btn" onclick="games_manager.' + (nButtonStatus === "Play" ? 'playGame' : 'startDownloading') + '(\'' + nGame.data_name + '\')" style="height: 100%;border-top-left-radius: 0px;border-bottom-left-radius: 0px;border-top-right-radius: 5px;border-bottom-right-radius: 5px;font-size: large;width: 115px;">' + nButtonStatus + '</button></div></div>';
+            let gameButton = "";
+            if (duelButtons) {
+              gameButton = '<button class="btn" onclick="games_manager.playGame(\'' + nGame.data_name + '\')" style="display:block;height: 65%;border-top-left-radius: 0px;border-bottom-left-radius: 0px;border-top-right-radius: 5px;border-bottom-right-radius: 0px;font-size: large;width: 115px;">' + nButtonPrimaryStatus + '</button><button class="btn" onclick="uninstallDialog(\'' + nGame.name + '\')" style="display:block;height: 35%;border-top-left-radius: 0px;border-bottom-left-radius: 0px;border-top-right-radius: 0px;border-bottom-right-radius: 5px;font-size: large;border-top-color:transparent;width: 115px;">' + nButtonSecondaryStatus + '</button>';
+            } else {
+              gameButton = '<button class="btn" onclick="games_manager.' + (nButtonPrimaryStatus === "Play" ? 'playGame' : 'startDownloading') + '(\'' + nGame.data_name + '\')" style="height: 100%;border-top-left-radius: 0px;border-bottom-left-radius: 0px;border-top-right-radius: 5px;border-bottom-right-radius: 5px;font-size: large;width: 115px;">' + nButtonPrimaryStatus + '</button>';
+            }
+            nGameListHTML += '<div style="height: 20%;width: 90%;background-color: lightgrey;margin-left: auto;margin-right: auto;border-radius: 5px;display: flow-root;margin-bottom: 25px;"><div style="width: 15vh;height: -webkit-fill-available;background-image: url(' + nGame.images.cover + ');background-repeat: no-repeat;background-size: contain;border-top-left-radius: 5px;border-bottom-left-radius: 5px;float: left;"></div><div style="position: relative;float: left;left: 1%;height: -webkit-fill-available;"><h3 style="font-weight: 700;font-size: large;position: absolute;width: 300px;text-align: center;top: 31%;">' + nGame.name + '</h3></div><div style="float: right;height: -webkit-fill-available;">' + gameButton + '</div></div>';
           });
 
           // Update list (If anything has changed!)
