@@ -486,6 +486,9 @@
 
           function smeltForgeItem (tx, profileItem) {
             let nItem = getItem(tx);
+            if (isWalletLocked) {
+              return alert("Please unlock ZENZO Core to smelt items!");
+            }
             zenzo.call("signmessage", addy, "smelt_" + (nItem.strTx || nitem.tx)).then(sig => {
               smeltItem({strTx: tx, strAddress: (nItem.strAddress || nItem.address)}, sig).then(a => {
                 closeItemMenu();
