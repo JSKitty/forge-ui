@@ -29,3 +29,19 @@ This Troubleshooting guide aims to assist users having unique problems with the 
 
 **Solution:**
 > Open ZENZO Core, find the top-right "Padlock" symbol, click it, select "Unlock Wallet" and enter your password, then you may continue!
+
+---
+
+## 3: Games Manager: After installing a game, I click Play and it does nothing.
+
+**Solution:** For this example, KOTA is the game. Delete the KOTA Folder in your directory and reinstall it within the ZENZO Forge again.
+> Step A: Close your ZENZO Forge application, if it isn't shutdown already.
+
+> Step B: Open your file explorer.
+
+> Step C: Go to the directory, similar to this `C:\Users\ADMIN\AppData\Roaming\forge\data\games`
+
+> Step D: Delete the folder of the desired game you're having issues with. For this example, delete the KOTA folder.
+
+> Step E: Restart the ZENZO Forge and install the game again.
+
