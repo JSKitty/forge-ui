@@ -1,3 +1,4 @@
+'use strict';
 // Modules to control application life and create native browser window
 const {app, BrowserWindow} = require('electron')
 const path = require('path')
@@ -9,8 +10,10 @@ let mainWindow
 function createWindow () {
   // Create the browser window.
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 820,
+    height: 675,
+    minWidth: 820,
+    minHeight: 675,
     webPreferences: {
       nodeIntegration: true
     },
