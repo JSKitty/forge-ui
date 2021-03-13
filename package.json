@@ -1,6 +1,6 @@
 {
   "name": "npm-package-zenzo-forge",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "A decentralized (P2P) metadata side-network for cryptocurrencies, optimized for gaming.",
   "main": "main.js",
   "scripts": {
@@ -21,7 +21,7 @@
   "author": "GitHub",
   "license": "CC0-1.0",
   "devDependencies": {
-    "electron": "^7.1.7"
+    "electron": "^12.0.1"
   },
   "dependencies": {
     "7zip-min": "^1.1.3",
