@@ -2,17 +2,17 @@
 
 ## Developer Setup
 
-### For GUI developers (Such as Windows or Github Desktop)
+### For GUI developers (Such as Windows/Linux/Mac or Github Desktop)
 
 1. Download Node.js and Github Desktop
 
 2. In Github Desktop go to `File --> Clone Repo... --> URL`, paste the github URL of your Forge repo and hit "Clone"
 
-3. After cloning, go to the top-bar `Repository --> Open in Command Prompt`, type `npm i` to install Forge dependencies
+3. After cloning, go to the top-bar `Repository --> Open in Command Prompt/Terminal`, type `npm i` to install Forge dependencies
 
-4. After dependencies finish downloading, you can type `npm start` to run the GUI on-the-fly, or `npm run-script build` to compile binaries for the OS you are using (E.g: A Windows `.exe` binary)
+4. After dependencies finish downloading, you can type `npm start` to run the GUI on-the-fly, or `npm run-script build.OS_HERE` to compile binaries for the OS you are using (E.g: A Windows `.exe` binary)
 
-5. (If you plan on compiling binaries, please run `npm i electron-packager -g` and then run `npm run-script build` afterwards)
+5. (If you plan on compiling binaries, please run `npm i electron-packager -g` and then run `npm run-script build.windows` afterwards and replace windows for your os ie: linux or mac)
 
 ### For CLI developers (Such as Linux and git CLI)
 

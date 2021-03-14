@@ -4,8 +4,10 @@
   "description": "A decentralized (P2P) metadata side-network for cryptocurrencies, optimized for gaming.",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-packager ./ \"ZENZO Forge\" --icon=\"zenzo.ico\""
+    "start": "electron --disable-gpu  --no-sandbox .",
+    "build.windows": "electron-packager ./ \"ZENZO Forge\" --icon=\"zenzo.ico\"",
+    "build.linux": "electron-packager ./ \"ZENZO Forge\" --icon=\"128x128.png\"",
+    "build.mac": "electron-packager ./ \"ZENZO Forge\" --icon=\"znz.icns\""
   },
   "repository": "https://github.com/ZENZO-Ecosystem/zenzo-forge",
   "keywords": [
